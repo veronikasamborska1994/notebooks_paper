@@ -1,0 +1,83 @@
+I Experiment name  : reversal_learning_6_pokes
+I Task name : reversal_learning_6_pokes
+I Subject ID : m482
+I Start date : 2018/04/06 17:31:50
+
+S {'sound_a_reward': 5, 'poke_b_reward': 4, 'period_before_iti': 10, 'b_forced_state': 13, 'choice_state': 2, 'start_state': 14, 'a_forced_state': 12, 'inter_trial_interval': 9, 'init_trial': 1, 'poke_a_reward': 3, 'sound_b_no_reward': 8, 'free_reward_trial': 11, 'sound_b_reward': 6, 'sound_a_no_reward': 7}
+
+E {'new_task': 30, 'poke_2': 16, 'poke_1': 15, 'poke_1_out': 21, 'poke_6': 20, 'old_task': 29, 'poke_5_out': 25, 'poke_5': 19, 'poke_4': 18, 'poke_3': 17, 'poke_4_out': 24, 'poke_2_out': 22, 'poke_3_out': 23, 'poke_6_out': 26, 'reward_consumption_timer': 28, 'session_timer': 27}
+
+D 0 14
+D 5 11
+P 6 FR#2
+D 64426 20
+D 64427 5
+D 64677 3
+D 64729 10
+D 67254 26
+D 67504 9
+D 69203 20
+D 69215 26
+D 69254 11
+P 69255 FR#1
+D 73080 20
+D 73147 26
+D 73177 20
+D 73378 26
+D 74336 20
+D 74450 26
+D 74513 20
+D 74631 26
+D 76237 20
+D 76342 26
+D 76830 19
+D 76831 6
+D 77081 4
+D 77133 10
+D 80570 25
+D 80598 19
+D 80907 25
+D 81158 9
+D 82908 1
+D 82994 19
+D 83024 25
+D 84134 20
+D 84192 26
+D 84245 20
+D 84253 26
+D 84869 19
+D 85024 25
+D 85085 19
+D 85179 25
+D 85474 20
+D 85555 26
+D 86581 20
+D 86696 26
+D 87360 19
+D 87474 25
+D 87791 20
+D 87987 26
+D 88813 20
+D 88999 26
+D 89551 17
+D 89552 2
+D 89668 23
+D 90039 19
+D 90040 8
+D 90130 25
+D 90290 10
+D 90540 9
+P 90542 T#:1, R#:2, B#:0, S:0, C:0, O:0, Cave:0.559, Count:0, Poke_IAB: 365,RP:{'good': 0.9, 'bad': 0.1}, FT:0
+D 91087 20
+D 91278 26
+! Error during framework run.
+! Traceback (most recent call last):
+!   File "<stdin>", line 1, in <module>
+!   File "pyControl/framework.py", line 267, in run
+!   File "pyControl/framework.py", line 232, in _update
+!   File "pyControl/state_machine.py", line 130, in _process_timed_goto_state
+!   File "pyControl/state_machine.py", line 58, in goto_state
+! pyControlError: Invalid state name passed to goto_state: NoneV n_rewards: 2
+V n_trials: 1
+V block_number: 0
+V cumulative_reversals: 0

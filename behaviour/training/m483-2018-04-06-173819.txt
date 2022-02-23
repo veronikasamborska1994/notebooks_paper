@@ -1,0 +1,44 @@
+I Experiment name  : reversal_learning_6_pokes
+I Task name : reversal_learning_6_pokes
+I Subject ID : m483
+I Start date : 2018/04/06 17:39:18
+
+S {'sound_a_reward': 5, 'poke_b_reward': 4, 'period_before_iti': 10, 'b_forced_state': 13, 'choice_state': 2, 'start_state': 14, 'a_forced_state': 12, 'inter_trial_interval': 9, 'init_trial': 1, 'poke_a_reward': 3, 'sound_b_no_reward': 8, 'free_reward_trial': 11, 'sound_b_reward': 6, 'sound_a_no_reward': 7}
+
+E {'new_task': 30, 'poke_2': 16, 'poke_1': 15, 'poke_1_out': 21, 'poke_6': 20, 'old_task': 29, 'poke_5_out': 25, 'poke_5': 19, 'poke_4': 18, 'poke_3': 17, 'poke_4_out': 24, 'poke_2_out': 22, 'poke_3_out': 23, 'poke_6_out': 26, 'reward_consumption_timer': 28, 'session_timer': 27}
+
+D 0 14
+D 5 1
+D 4057 20
+D 4058 13
+D 4299 26
+D 4530 20
+D 4660 26
+D 5032 20
+D 5370 26
+D 5654 19
+D 5655 6
+D 5853 25
+D 5905 4
+D 5957 10
+D 6207 9
+P 6210 T#:1, R#:1, B#:0, S:0, C:0, O:1, Cave:0.5, Count:0, Poke_IAB: 615,RP:{'good': 0.9, 'bad': 0.1}, FT:1
+D 6354 20
+D 6573 26
+D 7957 1
+D 9491 20
+D 9492 2
+D 9659 26
+D 9965 15
+D 9966 7
+D 10142 21
+D 10216 10
+D 10466 9
+P 10468 T#:2, R#:1, B#:0, S:0, C:1, O:0, Cave:0.441, Count:0, Poke_IAB: 615,RP:{'good': 0.9, 'bad': 0.1}, FT:0
+D 10728 20
+D 10917 26
+D 12216 1
+V n_rewards: 1
+V n_trials: 2
+V block_number: 0
+V cumulative_reversals: 0

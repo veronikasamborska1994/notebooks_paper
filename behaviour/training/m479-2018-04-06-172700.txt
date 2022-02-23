@@ -1,0 +1,52 @@
+I Experiment name  : reversal_learning_6_pokes
+I Task name : reversal_learning_6_pokes
+I Subject ID : m479
+I Start date : 2018/04/06 17:29:27
+
+S {'sound_a_reward': 5, 'poke_b_reward': 4, 'period_before_iti': 10, 'b_forced_state': 13, 'choice_state': 2, 'start_state': 14, 'a_forced_state': 12, 'inter_trial_interval': 9, 'init_trial': 1, 'poke_a_reward': 3, 'sound_b_no_reward': 8, 'free_reward_trial': 11, 'sound_b_reward': 6, 'sound_a_no_reward': 7}
+
+E {'new_task': 30, 'poke_2': 16, 'poke_1': 15, 'poke_1_out': 21, 'poke_6': 20, 'old_task': 29, 'poke_5_out': 25, 'poke_5': 19, 'poke_4': 18, 'poke_3': 17, 'poke_4_out': 24, 'poke_2_out': 22, 'poke_3_out': 23, 'poke_6_out': 26, 'reward_consumption_timer': 28, 'session_timer': 27}
+
+D 0 14
+D 5 11
+P 6 FR#2
+D 62597 20
+D 62598 5
+D 62848 3
+D 62900 10
+D 65708 26
+D 65959 9
+D 67709 11
+P 67710 FR#1
+D 68600 17
+D 68601 6
+D 68851 4
+D 68903 10
+D 71609 23
+D 71859 9
+D 73609 1
+D 74558 19
+D 74558 2
+D 74772 25
+D 75209 17
+D 75210 6
+D 75460 4
+D 75512 10
+D 78277 23
+D 78528 9
+P 78531 T#:1, R#:3, B#:0, S:0, C:0, O:1, Cave:0.559, Count:0, Poke_IAB: 563,RP:{'good': 0.9, 'bad': 0.1}, FT:0
+D 79223 20
+D 79382 26
+D 79401 20
+D 79785 26
+! Error during framework run.
+! Traceback (most recent call last):
+!   File "<stdin>", line 1, in <module>
+!   File "pyControl/framework.py", line 267, in run
+!   File "pyControl/framework.py", line 232, in _update
+!   File "pyControl/state_machine.py", line 130, in _process_timed_goto_state
+!   File "pyControl/state_machine.py", line 58, in goto_state
+! pyControlError: Invalid state name passed to goto_state: NoneV n_rewards: 3
+V n_trials: 1
+V block_number: 0
+V cumulative_reversals: 0
