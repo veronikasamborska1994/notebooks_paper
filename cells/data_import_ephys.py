@@ -4,8 +4,6 @@ import numpy as np
 from datetime import datetime, date
 from collections import namedtuple
 
-#from . import plotting as pl 
-
 Event = namedtuple('Event', ['time','name'])
 
 #----------------------------------------------------------------------------------
@@ -109,19 +107,11 @@ class Session():
         if 'FT' in trial_lines[0]:
             forced_trial = np.array([int(tl[tl.find('FT:')+3]) for tl in trial_lines])
             
-        #if 'FT' in trial_lines[0]:
-           # self.trial_data = {'choices': choices,'outcomes':outcomes, 'state':state, 'trials':trial,
-                           #'pre-reversal trials': number_of_trials_pre_reversal, 'block': blocks, 'n_trials': n_trials, 
-                           #'configuration_i':configuration_i, 'poke_A':poke_A, 'poke_B':poke_B, 'forced_trial': forced_trial}
-        if 'Task' in trial_lines[0]: 
-            self.trial_data = {'choices': choices,'outcomes':outcomes, 'state':state, 'trials':trial,
+        
+        self.trial_data = {'choices': choices,'outcomes':outcomes, 'state':state, 'trials':trial,
                            'pre-reversal trials': number_of_trials_pre_reversal, 'block': blocks, 'n_trials': n_trials, 
                           'configuration_i':configuration_i, 'poke_A':poke_A, 'poke_B':poke_B, 'forced_trial': forced_trial, 'task':task}
-        else:
-            self.trial_data = {'choices': choices,'outcomes':outcomes, 'state':state, 'trials':trial,
-                           'pre-reversal trials': number_of_trials_pre_reversal, 'block': blocks, 'n_trials': n_trials, 
-                          'configuration_i':configuration_i, 'poke_A':poke_A, 'poke_B':poke_B, 'forced_trial': forced_trial}
-        #self.n_trials = len(stimuli)
+        
 
     def plot(self, fig_no=1):
         pl.session_plot(self)
@@ -133,14 +123,6 @@ class Session():
             return [self.trial_data[o_dict[i]] for i in order]
         else:
             return [self.trial_data[o_dict[i]].astype(dtype) for i in order]
-
-
-
-
-
-#----------------------------------------------------------------------------------
-# Experiment class
-#----------------------------------------------------------------------------------
 
 class Experiment():
     def __init__(self, folder_path, int_subject_IDs=True, rebuild_sessions=False):
