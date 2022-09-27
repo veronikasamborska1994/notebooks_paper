@@ -39,7 +39,7 @@ class Session():
         # Load lines from file.
 
         with open(file_path, 'r') as f:
-            print('Importing data file: '+os.path.split(file_path)[1])
+            #print('Importing data file: '+os.path.split(file_path)[1])
             all_lines = [line.strip() for line in f.readlines() if line.strip()]
 
         # Extract and store session information.
