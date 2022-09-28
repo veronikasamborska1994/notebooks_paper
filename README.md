@@ -17,3 +17,4 @@ After downloading the data, cloning the github repository and installing a few b
 
 **cells - extended data.ipynb** will plot all the **extended data figures** that relate to neural results in our paper 
  
+![](media/notebook.gif)
