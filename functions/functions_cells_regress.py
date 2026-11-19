@@ -202,7 +202,7 @@ def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
             )
             diff_perm = np.stack(results, 0)
     p_95 = np.percentile(diff_perm,95, axis = 0) # find 95th percentile
-    p_99 = np.percentile(diff_perm,99.9, axis = 0) # find 99.9th percentile (P < 0.001)
+    p_99 = np.percentile(diff_perm,99, axis = 0) # find 99th percentile
     real_diff = np.abs(np.mean(cpd_PFC,0) - np.mean(cpd_HP,0))
     return p_95, p_99, real_diff
     
@@ -292,11 +292,11 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
         cpd = cpds[region][:,:-1] # select all cpds except constant
         cpd_perm = cpds_perms[region][:,:,:,:-1]
         values_95 = np.max(np.percentile(np.mean(cpd_perm,1),95,0),0) # 95th percentile corrected for multiple tests
-        values_99 = np.max(np.percentile(np.mean(cpd_perm,1),99.9,0),0)  # 99.9th percentile corrected for multiple tests (P < 0.001)
+        values_99 = np.max(np.percentile(np.mean(cpd_perm,1),99,0),0)  # 99th percentile corrected for multiple tests
         array_pvals = np.ones((cpd.shape[0],cpd.shape[1]))
         for pred in range(cpd.shape[1]): # loop through pred
             array_pvals[(np.where(cpd[:,pred] > values_95[pred])[0]),pred] = 0.05 # indicate where significant at 0.05 for each region (loop)
-            array_pvals[(np.where(cpd[:,pred] > values_99[pred])[0]),pred] = 0.001 # indicate where significant at 0.001 for each region (loop)
+            array_pvals[(np.where(cpd[:,pred] > values_99[pred])[0]),pred] = 0.01 # indicate where significant at 0.01 for each region (loop)
 
         for pred in np.arange(cpd.shape[1]):
             # random stylistic things
@@ -313,15 +313,15 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
             axs[pred].set_title(p[pred])
             
             
-            p_vals = array_pvals[:,pred] # p-value of 0.001 or 0.05 for loop predictor 
-            t05 = t[p_vals == 0.05]; t001 = t[p_vals == 0.001] 
+            p_vals = array_pvals[:,pred] # p-value of 0.01 or 0.05 for loop predictor
+            t05 = t[p_vals == 0.05]; t001 = t[p_vals == 0.01]
         
             index_95 = indicies_95[0][np.where(indicies_95[1] == pred)[0]]  # between region 95th percentile
             index_99 = indicies_99[0][np.where(indicies_99[1] == pred)[0]]  # between region 99th percentile
 
             if region == 0:
                 axs[pred].plot(t05, np.ones(t05.shape)*ymax + offset, '.', markersize = 2, color = c[region])
-                axs[pred].plot(t001, np.ones(t001.shape)*ymax + offset, '.', markersize = 4, color = c[region], label = label_region[region] + ' ' + '< .001')
+                axs[pred].plot(t001, np.ones(t001.shape)*ymax + offset, '.', markersize = 4, color = c[region], label = label_region[region] + ' ' + '< .01')
                 axs[pred].plot(index_95, np.ones(index_95.shape)*ymax + offset2, '.', markersize = 2, color = 'grey')
                 axs[pred].plot(index_99, np.ones(index_99.shape)*ymax + offset2, '.', markersize = 4, color = 'grey',label = '< .001 diff PFC and HP ')
                 axs[pred].set_xticks(_xticks)
@@ -331,6 +331,6 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
                 sns.despine()
             else: 
                 axs[pred].plot(t05, np.ones(t05.shape)*ymax +offset3, '.', markersize = 2, color = c[region])
-                axs[pred].plot(t001, np.ones(t001.shape)*ymax + offset3, '.', markersize = 4, color = c[region],label = label_region[region] + ' ' + '< .001')
+                axs[pred].plot(t001, np.ones(t001.shape)*ymax + offset3, '.', markersize = 4, color = c[region],label = label_region[region] + ' ' + '< .01')
             axs[pred].legend()
 

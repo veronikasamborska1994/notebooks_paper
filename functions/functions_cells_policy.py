@@ -156,17 +156,17 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     # plot cpds and significance levels
     for c,cpd in enumerate(cpds): 
         values_95 = np.max(np.percentile(np.mean(cpds_perms[c],1),95,0),0) # indicate where significant at 0.05 for each region (loop) 
-        values_99 = np.max(np.percentile(np.mean(cpds_perms[c],1),99.9,0),0) # 99.9th percentile (P < 0.001)
+        values_99 = np.max(np.percentile(np.mean(cpds_perms[c],1),99,0),0) # 99th percentile (P < 0.01)
         cpd_max = np.max(cpd); plt.subplot(1,2,c+1); plt.title(titles[c])
         array_pvals = np.ones((cpd.shape[0], cpd.shape[1])) # store where significant at .05 or .001
         for pred in range(cpd.shape[1]):  # loop through pred
             array_pvals[(np.where(cpd[:,pred] > values_95[pred])[0]),pred] = 0.05
-            array_pvals[(np.where(cpd[:,pred] > values_99[pred])[0]),pred] = 0.001  
+            array_pvals[(np.where(cpd[:,pred] > values_99[pred])[0]),pred] = 0.01
        
         for pred in np.arange(cpd.shape[1]):
             plt.plot(cpd[:,pred]*100, color = clrs[pred], label = p[pred])
             ymax = cpd_max*(1.2+0.02*pred)*100
-            p_vals = array_pvals[:,pred]; t05 = t[p_vals == 0.05]; t001 = t[p_vals == 0.001]
+            p_vals = array_pvals[:,pred]; t05 = t[p_vals == 0.05]; t001 = t[p_vals == 0.01]
             plt.plot(t05, np.ones(t05.shape)*ymax, '.', markersize = 2, color = clrs[pred])
             plt.plot(t001, np.ones(t001.shape)*ymax, '.', markersize = 4, color = clrs[pred])
             plt.xticks(_xticks, XTICK_LABELS)
