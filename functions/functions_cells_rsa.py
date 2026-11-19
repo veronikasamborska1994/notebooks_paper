@@ -205,7 +205,7 @@ def regression_RSA(HP, PFC, t_start, t_end, perm_n=False, animal_perm=False, dlc
         n_hp_sessions = len(HP['DM'][0])
         pfc_perm = np.zeros((int(perm_n),X.shape[1])); hp_perm = np.zeros((int(perm_n),X.shape[1]))
         if animal_perm == False:
-            _njobs = 2 if perm_n > 20 else 1
+            _njobs = 1
             results = Parallel(n_jobs=_njobs)(
                 delayed(_one_perm_rsa)(all_subjects_DM, all_subjects_fr, n_hp_sessions, X, t_start, t_end, perm_n, animal_perm)
                 for _ in range(perm_n)

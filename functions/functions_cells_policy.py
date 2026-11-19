@@ -345,7 +345,7 @@ def permute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, anim
     n_pfc_sessions = PFC['DM'][0].shape[0]
 
     if animal_perm == False:
-        _njobs = 4 if perm_n > 20 else 1
+        _njobs = 1
         results = Parallel(n_jobs=_njobs)(
             delayed(_one_perm_policy_A_B)(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind)
             for _ in range(perm_n)
@@ -521,7 +521,7 @@ def permute_sessions_diagonal(HP, PFC, c_1 = 1, n = 11, perm_n = 2, dlc = False,
         all_subjects = np.hstack([PFC['DM'][0], HP['DM'][0]])
         all_subjects_firing = np.hstack([PFC['Data'][0], HP['Data'][0]])
         n_pfc_sessions = PFC['DM'][0].shape[0]
-        _njobs = 4 if perm_n > 20 else 1
+        _njobs = 1
         results = Parallel(n_jobs=_njobs)(
             delayed(_one_perm_diagonal)(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, dlc)
             for _ in range(perm_n)
