@@ -1,3 +1,16 @@
+"""SVM decoding of trial states across task layouts (Figure 4F-G).
+
+Trains a linear SVM to classify trial position (initiation, A/B choice,
+A/B reward, A/B no-reward) using neural population activity from one task
+layout, then tests cross-task generalisation on a different layout.
+Animal-shuffle permutation tests compare HP vs PFC.
+
+Key functions:
+- decoder_trial_states: train/test SVM decoder for one task pair
+- permute_subjects: run all animal permutations
+- plot: main plotting function
+"""
+
 import numpy as np
 from sklearn import svm
 from sklearn import metrics
@@ -15,7 +28,7 @@ def import_cell_data(path):
     HP = io.loadmat(path +'/data_recordings/HP.mat')
     PFC = io.loadmat(path + '/data_recordings/PFC.mat')
     
-    'Import neual data after accounting for physical movements.'
+    'Import neural data after accounting for physical movements.'
     HP_dlc = io.loadmat(path +'/data_recordings/after PCA /HP_dlc_pca.mat')
     PFC_dlc = io.loadmat(path + '/data_recordings/after PCA /PFC_dlc_pca.mat')
     
@@ -159,7 +172,26 @@ def decoder_trial_states(data, task_test = 0, H = 0, perm = True, decoder_full =
     
 
 def permute_subjects(HP, PFC):
-    '''' Function to permute subjects and run decoder in all task combinations (Figure 3F, G).'''
+    """Permute subjects between regions and run decoder for all task pairs (Fig 4F-G).
+
+    Enumerates all C(7,3) = 35 ways to split 7 animals into groups of 3 (HP)
+    and 4 (PFC), runs the decoder for each split, and compares against the
+    real HP/PFC assignment.
+
+    Parameters
+    ----------
+    HP, PFC : dict
+        Neural data dicts with keys 'DM' and 'Data'.
+
+    Returns
+    -------
+    perm_all_xy, perm_all_yx : list
+        Permuted confusion matrices for each direction.
+    subj_hp_xy, subj_hp_yx : list
+        Real HP confusion matrices.
+    subj_pfc_xy, subj_pfc_yx : list
+        Real PFC confusion matrices.
+    """
     
     HP_1 = 15; HP_2 = 7 # # sessions to split by animals 
     PFC_1 = 9; PFC_2 = 16; PFC_3 = 13 
@@ -240,8 +272,19 @@ def permute_subjects(HP, PFC):
             
     return  perm_all_xy, perm_all_yx, subj_hp_xy, subj_hp_yx, subj_pfc_xy, subj_pfc_yx
 
-def plot(HP, PFC):  
-    '''' Plotting function for different patterns of decoding in Figure 3F, G.'''
+def plot(HP, PFC):
+    """Plot cross-task decoding results (Fig 4F-G).
+
+    Runs all permutations and plots:
+    - Average confusion matrices for HP and PFC
+    - Bar plots comparing correct, sequential, and port decoding patterns
+    - Statistical significance from animal-permutation tests.
+
+    Parameters
+    ----------
+    HP, PFC : dict
+        Neural data dicts with keys 'DM' and 'Data'.
+    """
 
     perm_all, perm_all_2, matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2 =  permute_subjects(HP, PFC) 
     cmap =  palettable.scientific.sequential.Acton_3.mpl_colormap

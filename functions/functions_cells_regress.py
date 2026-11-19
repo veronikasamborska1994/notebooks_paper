@@ -1,34 +1,72 @@
+"""GLM-based neural regression analysis with permutation testing.
+
+Computes coefficients of partial determination (CPD) for choice, reward,
+and choice x reward interaction predictors on neural firing rates across
+time. Supports both session-shuffle and animal-shuffle permutation tests.
+
+Key functions:
+- GLM_roll_time: compute CPDs at each timepoint for all sessions
+- GLM_perm_across_regions: permutation test shuffling sessions between HP and PFC
+- plot_simple_GLM: main plotting function (Figure 4B)
+"""
+
 import numpy as np
-import pylab as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 from palettable import wesanderson as wes
-from itertools import combinations 
+from itertools import combinations
 from math import factorial
-from functions.helper_functions import _CPD
+from joblib import Parallel, delayed
+from functions.helper_functions import _CPD, animal_exp_permute
 
-def animal_exp_permute(all_sessions_HP,all_sessions_PFC):
-   
-    HP_1 = 15; HP_2 = 7 # CA1 sessions
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13 # PFC sessions
-    
-    # trial info data for each CA1 and PFC animal
-    HP_all_sessions_1 = all_sessions_HP['DM'][0][:HP_1]; HP_all_sessions_2 = all_sessions_HP['DM'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3 = all_sessions_HP['DM'][0][HP_1+HP_2:]
 
-    PFC_all_sessions_1 = all_sessions_PFC['DM'][0][:PFC_1]; PFC_all_sessions_2 = all_sessions_PFC['DM'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3 = all_sessions_PFC['DM'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3]; PFC_all_sessions_4 = all_sessions_PFC['DM'][0][PFC_1+PFC_2+PFC_3:]
-    
-    # firing rate data for each CA1 and PFC animal
-    HP_all_sessions_1_fr = all_sessions_HP['Data'][0][:HP_1]; HP_all_sessions_2_fr = all_sessions_HP['Data'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3_fr = all_sessions_HP['Data'][0][HP_1+HP_2:]
+def _one_perm_glm(all_subjects_DM, all_subjects_fr, n_HP_sessions):
+    '''Single session-shuffle permutation iteration for GLM_perm_across_regions.'''
+    n_sessions = np.random.permutation(len(all_subjects_DM))
+    indices_HP = n_sessions[:n_HP_sessions]
+    indices_PFC = n_sessions[n_HP_sessions:]
 
-    PFC_all_sessions_1_fr = all_sessions_PFC['Data'][0][:PFC_1]; PFC_all_sessions_2_fr = all_sessions_PFC['Data'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3_fr = all_sessions_PFC['Data'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3];   PFC_all_sessions_4_fr = all_sessions_PFC['Data'][0][PFC_1+PFC_2+PFC_3:]
-   
-    all_subjects_DM = [HP_all_sessions_1,HP_all_sessions_2, HP_all_sessions_3,PFC_all_sessions_1,PFC_all_sessions_2, PFC_all_sessions_3,PFC_all_sessions_4]
-    all_subjects_fr = [HP_all_sessions_1_fr,HP_all_sessions_2_fr, HP_all_sessions_3_fr,PFC_all_sessions_1_fr,PFC_all_sessions_2_fr, PFC_all_sessions_3_fr,PFC_all_sessions_4_fr]
+    DM_PFC_perm = all_subjects_DM[indices_PFC]
+    firing_PFC_perm = all_subjects_fr[indices_PFC]
+    DM_HP_perm = all_subjects_DM[indices_HP]
+    firing_HP_perm = all_subjects_fr[indices_HP]
 
-    return  all_subjects_DM ,all_subjects_fr
+    cpd_HP_1_perm = []; cpd_HP_2_perm = []; cpd_HP_3_perm = []
+    cpd_PFC_1_perm = []; cpd_PFC_2_perm = []; cpd_PFC_3_perm = []
+
+    for d, (dm, firing) in enumerate([(DM_PFC_perm, firing_PFC_perm), (DM_HP_perm, firing_HP_perm)]):
+        for s in range(len(dm)):
+            DM = dm[s]; firing_rates_all = firing[s]
+            task = DM[:,5]; choices_all = DM[:,1] - 0.5; reward_all = DM[:,2]
+            rew_ch_all = choices_all * reward_all
+            for i in [1, 2, 3]:
+                idx = np.where(task == i)[0]
+                choice = choices_all[idx]; reward = reward_all[idx]; reward_ch = rew_ch_all[idx]
+                ones = np.ones(len(reward_ch))
+                firing_rates = firing_rates_all[idx]
+                n_trials, n_neurons, n_timepoints = firing_rates.shape
+                X = np.vstack([choice, reward, reward_ch, ones]).T
+                n_predictors = X.shape[1]
+                y = firing_rates.reshape([len(firing_rates), -1])
+                cpd = _CPD(X, y).reshape(n_neurons, n_timepoints, n_predictors)
+                if d == 0:
+                    if i == 1: cpd_HP_1_perm.append(cpd)
+                    elif i == 2: cpd_HP_2_perm.append(cpd)
+                    elif i == 3: cpd_HP_3_perm.append(cpd)
+                else:
+                    if i == 1: cpd_PFC_1_perm.append(cpd)
+                    elif i == 2: cpd_PFC_2_perm.append(cpd)
+                    elif i == 3: cpd_PFC_3_perm.append(cpd)
+
+    cpd_HP_1_perm = np.concatenate(cpd_HP_1_perm, 0)
+    cpd_HP_2_perm = np.concatenate(cpd_HP_2_perm, 0)
+    cpd_HP_3_perm = np.concatenate(cpd_HP_3_perm, 0)
+    cpd_PFC_1_perm = np.concatenate(cpd_PFC_1_perm, 0)
+    cpd_PFC_2_perm = np.concatenate(cpd_PFC_2_perm, 0)
+    cpd_PFC_3_perm = np.concatenate(cpd_PFC_3_perm, 0)
+    cpd_PFC_perm = np.nanmean([cpd_PFC_1_perm, cpd_PFC_2_perm, cpd_PFC_3_perm], 0)
+    cpd_HP_perm = np.nanmean([cpd_HP_1_perm, cpd_HP_2_perm, cpd_HP_3_perm], 0)
+    return abs(np.mean(cpd_PFC_perm, 0) - np.mean(cpd_HP_perm, 0))
 
 
 def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
@@ -156,65 +194,13 @@ def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
                 cpd_PFC_perm = np.nanmean([cpd_PFC_1_perm,cpd_PFC_2_perm,cpd_PFC_3_perm],0);cpd_HP_perm = np.nanmean([cpd_HP_1_perm,cpd_HP_2_perm,cpd_HP_3_perm],0)
                 diff_perm[p,:] = abs(np.mean(cpd_PFC_perm,0) - np.mean(cpd_HP_perm,0))
         else:
-            for p in range(perm):
-                np.random.shuffle(n_sessions) # shuffle PFC/HP sessions
-                indices_HP = n_sessions[:len(HP['DM'][0])]
-                indices_PFC = n_sessions[len(HP['DM'][0]):]
-                DM_PFC_perm = all_subjects_DM[np.asarray(indices_PFC)]
-                firing_PFC_perm = all_subjects_fr[np.asarray(indices_PFC)]
-
-                DM_HP_perm = all_subjects_DM[np.asarray(indices_HP)]
-                firing_HP_perm = all_subjects_fr[np.asarray(indices_HP)]
-
-                cpd_HP_1_perm = []; cpd_HP_2_perm = []; cpd_HP_3_perm  = []
-                cpd_PFC_1_perm = []; cpd_PFC_2_perm = []; cpd_PFC_3_perm  = []
-
-                dms_perm = [DM_PFC_perm,DM_HP_perm]
-                firings_perms = [firing_PFC_perm,firing_HP_perm]
-
-                for d, dm in enumerate(dms_perm): # same as above but calculate for permuted sessions
-                    firing = firings_perms[d]
-                    for  s, sess in enumerate(dm):
-                        DM = dm[s]; firing_rates_all = firing[s]
-                       # trial information
-                        task =  DM[:,5]; choices_all = DM[:,1]; reward_all = DM[:,2]  
-                        choices_all = choices_all-0.5
-                        rew_ch_all = choices_all*reward_all
-
-                        # make a design matrix for each task and calculate CPDs within each task
-                        tasks = [1,2,3]
-                        for i in tasks: 
-                            choice  = choices_all[np.where(task == i)[0]]
-                            reward = reward_all[np.where(task == i)[0]]
-                            reward_ch = rew_ch_all[np.where(task == i)[0]]
-                            ones = np.ones(len(reward_ch))
-                            firing_rates = firing_rates_all[np.where(task == i)[0]]
-                            n_trials, n_neurons, n_timepoints = firing_rates.shape
-                            X = np.vstack([choice,reward,reward_ch,ones]).T
-                            n_predictors = X.shape[1]
-                            y = firing_rates.reshape([len(firing_rates),-1]) # activity matrix [n_trials, n_neurons*n_timepoints]
-
-                            if d == 0:
-                                if i == 1:
-                                    cpd_HP_1_perm.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
-                                elif i == 2:
-                                    cpd_HP_2_perm.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
-                                elif i == 3:
-                                    cpd_HP_3_perm.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
-
-                            else:
-                                if i == 1:
-                                    cpd_PFC_1_perm.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
-                                elif i == 2:
-                                    cpd_PFC_2_perm.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
-                                elif i == 3:
-                                    cpd_PFC_3_perm.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
-
-      
-                cpd_HP_1_perm = np.concatenate(cpd_HP_1_perm,0); cpd_HP_2_perm = np.concatenate(cpd_HP_2_perm,0);cpd_HP_3_perm = np.concatenate(cpd_HP_3_perm,0)
-                cpd_PFC_1_perm = np.concatenate(cpd_PFC_1_perm,0); cpd_PFC_2_perm = np.concatenate(cpd_PFC_2_perm,0);cpd_PFC_3_perm = np.concatenate(cpd_PFC_3_perm,0)
-                cpd_PFC_perm = np.nanmean([cpd_PFC_1_perm,cpd_PFC_2_perm,cpd_PFC_3_perm],0);cpd_HP_perm = np.nanmean([cpd_HP_1_perm,cpd_HP_2_perm,cpd_HP_3_perm],0)
-                diff_perm[p,:] = abs(np.mean(cpd_PFC_perm,0) - np.mean(cpd_HP_perm,0))
+            n_HP_sessions = len(HP['DM'][0])
+            _njobs = -1 if perm > 20 else 1
+            results = Parallel(n_jobs=_njobs)(
+                delayed(_one_perm_glm)(all_subjects_DM, all_subjects_fr, n_HP_sessions)
+                for _ in range(perm)
+            )
+            diff_perm = np.stack(results, 0)
     p_95 = np.percentile(diff_perm,95, axis = 0) # find 95th percentile
     p_99 = np.percentile(diff_perm,99, axis = 0) # find 99th percentile
     real_diff = np.abs(np.mean(cpd_PFC,0) - np.mean(cpd_HP,0))

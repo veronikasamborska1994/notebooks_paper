@@ -1,52 +1,46 @@
+"""Import behavioural training data from pyControl log files.
+
+Provides Session and Experiment classes for loading and querying
+multi-subject training data from the reversal-learning task.
+"""
+
 import os
 import pickle
 import numpy as np
 from datetime import datetime, date
 from collections import namedtuple
 
-Event = namedtuple('Event', ['time','name'])
+Event = namedtuple('Event', ['time', 'name'])
 
-#----------------------------------------------------------------------------------
-# Session class
-#----------------------------------------------------------------------------------
 
 class Session():
-    '''Import data from a pyControl file and represent it as an object with attributes:
-      - file_name
-      - experiment_name
-      - task_name
-      - subject_ID
-          If argument int_subject_IDs is True, suject_ID is stored as an integer,
-          otherwise subject_ID is stored as a string.
-      - datetime
-          The date and time that the session started stored as a datetime object.
-      - datetime_string
-          The date and time that the session started stored as a string of format 'YYYY-MM-DD HH:MM:SS'
-      - events
-          A list of all framework events and state entries in the order they occured. 
-          Each entry is a namedtuple with fields 'time' & 'name', such that you can get the 
-          name and time of event/state entry x with x.name and x.time respectively/
-      - times
-          A dictionary with keys that are the names of the framework events and states and 
-          corresponding values which are Numpy arrays of all the times (in milliseconds since the
-           start of the framework run) at which each event occured.
-      - print_lines
-          A list of all the lines output by print statements during the framework run, each line starts 
-          with the time in milliseconds at which it was printed.
-    '''
+    """A single pyControl behavioural session.
+
+    Parses a pyControl log file and stores trial-level data including
+    choices, outcomes, task configuration, and poke-port assignments.
+
+    Attributes
+    ----------
+    file_name : str
+    experiment_name : str
+    task_name : str
+    subject_ID : int or str
+    datetime : datetime
+    datetime_string : str
+    events : list of Event namedtuples
+    times : dict mapping event names to arrays of timestamps (ms)
+    print_lines : list
+    trial_data : dict with keys 'choices', 'outcomes', 'state', 'trials',
+        'pre-reversal trials', 'block', 'n_trials', 'configuration_i',
+        'poke_A', 'poke_B', 'forced_trial', and optionally 'task'.
+    """
 
     def __init__(self, file_path, int_subject_IDs=True):
-        # Load lines from file.
-
         with open(file_path, 'r') as f:
-            #print('Importing data file: '+os.path.split(file_path)[1])
             all_lines = [line.strip() for line in f.readlines() if line.strip()]
 
-        # Extract and store session information.
-
         self.file_name = os.path.split(file_path)[1]
-       
-        
+
         info_lines = [line[2:] for line in all_lines if line[0]=='I']
 
         self.experiment_name = next(line for line in info_lines if 'Experiment name' in line).split(' : ')[1]

@@ -1,31 +1,27 @@
+"""SVD-based analysis of neural population patterns (Figure 5).
+
+Decomposes population firing rate patterns using SVD to identify dominant
+modes of variation. Compares explained variance between HP and PFC, and
+tests cross-region projection by applying SVD modes from one region to data
+from the other. Uses cross-validation (split by problem half) to avoid
+overfitting.
+
+Key functions:
+- extract_data: arrange firing rates by condition for SVD
+- svd / real_diff: compute explained variance differences between regions
+- svd_between_brains: project one region's data onto another's SVD modes
+- permute / run_permutations_and_plot: session-shuffle permutation tests
+- plot_main_figure: main plotting function (Figure 5D-H)
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from itertools import combinations 
+from itertools import combinations
+from joblib import Parallel, delayed
 
 
-def animal_exp_permute(all_sessions_HP,all_sessions_PFC):  
-    HP_1 = 15; HP_2 = 7 # CA1 sessions
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13 # PFC sessions
-    
-    # trial info data for each CA1 and PFC animal
-    HP_all_sessions_1 = all_sessions_HP['DM'][0][:HP_1]; HP_all_sessions_2 = all_sessions_HP['DM'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3 = all_sessions_HP['DM'][0][HP_1+HP_2:]
-
-    PFC_all_sessions_1 = all_sessions_PFC['DM'][0][:PFC_1]; PFC_all_sessions_2 = all_sessions_PFC['DM'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3 = all_sessions_PFC['DM'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3]; PFC_all_sessions_4 = all_sessions_PFC['DM'][0][PFC_1+PFC_2+PFC_3:]
-    
-    # firing rate data for each CA1 and PFC animal
-    HP_all_sessions_1_fr = all_sessions_HP['Data'][0][:HP_1]; HP_all_sessions_2_fr = all_sessions_HP['Data'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3_fr = all_sessions_HP['Data'][0][HP_1+HP_2:]
-
-    PFC_all_sessions_1_fr = all_sessions_PFC['Data'][0][:PFC_1]; PFC_all_sessions_2_fr = all_sessions_PFC['Data'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3_fr = all_sessions_PFC['Data'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3];   PFC_all_sessions_4_fr = all_sessions_PFC['Data'][0][PFC_1+PFC_2+PFC_3:]
-   
-    all_subjects_DM = [HP_all_sessions_1,HP_all_sessions_2, HP_all_sessions_3,PFC_all_sessions_1,PFC_all_sessions_2, PFC_all_sessions_3,PFC_all_sessions_4]
-    all_subjects_fr = [HP_all_sessions_1_fr,HP_all_sessions_2_fr, HP_all_sessions_3_fr,PFC_all_sessions_1_fr,PFC_all_sessions_2_fr, PFC_all_sessions_3_fr,PFC_all_sessions_4_fr]
-
-    return  all_subjects_DM ,all_subjects_fr
+from functions.helper_functions import animal_exp_permute
 
 
 def extract_data(data, perm = False, inds =  np.arange(13,51)):
@@ -56,7 +52,7 @@ def extract_data(data, perm = False, inds =  np.arange(13,51)):
     flattened_all_clusters_task_3_first_half = np.zeros((neurons,len_trial*4))
     flattened_all_clusters_task_3_second_half = np.zeros((neurons,len_trial*4))
      
-    for  s, sess in enumerate(all_firing): #itirate through sessions
+    for  s, sess in enumerate(all_firing): # iterate through sessions
             DM = all_subjects[s]
             firing_rates = all_firing[s][:,:,inds]
             n_trials, n_neurons, n_timepoints = firing_rates.shape
@@ -177,7 +173,7 @@ def svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_
         average_within = average_within_all
         average_between = average_between_all
    
-    trp = (np.trapz(average_within) - np.trapz(average_between))/average_within.shape[0] # area under the curve
+    trp = (np.trapezoid(average_within) - np.trapezoid(average_between))/average_within.shape[0] # area under the curve
     return trp,average_between,average_within
 
 
@@ -378,60 +374,53 @@ def plot_example_patterns(data):
         plt.title('Task '+ str(vec+1))
     sns.despine()
 
+def _one_perm_svd(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds):
+    '''Single permutation iteration for permute (session-shuffle branch).'''
+    n_sessions = np.arange(len(all_subjects))
+    np.random.shuffle(n_sessions)
+    indices_HP = n_sessions[:n_hp_sessions]; indices_PFC = n_sessions[n_hp_sessions:]
+    HP_shuffle = [all_subjects[indices_HP], all_subjects_firing[indices_HP]]
+    PFC_shuffle = [all_subjects[indices_PFC], all_subjects_firing[indices_PFC]]
+    u_v_area = []
+    for data in [HP_shuffle, PFC_shuffle]:
+        f1, f1b, f2, f2b, f3, f3b = extract_data(data, perm=True, inds=inds)
+        trp, _, _ = svd(f1, f1b, f2, f2b, f3, f3b, diagonal=diagonal, axis=axis)
+        u_v_area.append(trp)
+    return u_v_area
+
+
 def permute(PFC, HP, diagonal = False, perm = 2, axis = 0, inds = np.arange(13,51), animal_perm = False):
     '''' Function to permute sessions for the svd analysis and find a distribution in differences between areas
     under the curve between PFC and HP'''
 
-    all_subjects = np.concatenate((HP['DM'][0],PFC['DM'][0]),0)     
-    all_subjects_firing = np.concatenate((HP['Data'][0],PFC['Data'][0]),0)     
-    n_sessions = np.arange(len(HP['DM'][0])+len(PFC['DM'][0]))
-    u_v_area_shuffle = []    
+    all_subjects = np.concatenate((HP['DM'][0],PFC['DM'][0]),0)
+    all_subjects_firing = np.concatenate((HP['Data'][0],PFC['Data'][0]),0)
+    n_hp_sessions = len(HP['DM'][0])
+
     if animal_perm == True:
         animals_PFC = [0,1,2,3]; animals_HP = [4,5,6]
         m, n = len(animals_PFC), len(animals_HP)
-        all_subjects_DM, all_subjects_fr  = animal_exp_permute(HP,PFC)
+        all_subjects_DM, all_subjects_fr = animal_exp_permute(HP, PFC)
+        u_v_area_shuffle = []
         for indices_PFC in combinations(range(m + n), m):
             indices_HP = [i for i in range(m + n) if i not in indices_PFC]
-            DM_PFC_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_PFC)],0)
-            firing_PFC_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_PFC)],0)
-                
-            DM_HP_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_HP)],0)
-            firing_HP_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_HP)],0)
-            HP_shuffle = [DM_HP_perm,firing_HP_perm]; PFC_shuffle = [DM_PFC_perm,firing_PFC_perm]
+            DM_PFC_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_PFC)], 0)
+            firing_PFC_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_PFC)], 0)
+            DM_HP_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_HP)], 0)
+            firing_HP_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_HP)], 0)
+            HP_shuffle = [DM_HP_perm, firing_HP_perm]; PFC_shuffle = [DM_PFC_perm, firing_PFC_perm]
             u_v_area = []
-            for data in [HP_shuffle,PFC_shuffle]: # find area under curve for HP and PFC
-                flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half = extract_data(data, perm = True, inds = inds)
-
-                trp, average_between_all,average_within_all = svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half, diagonal = diagonal, axis = axis)
-                u_v_area.append(trp) 
-
+            for data in [HP_shuffle, PFC_shuffle]:
+                f1, f1b, f2, f2b, f3, f3b = extract_data(data, perm=True, inds=inds)
+                trp, _, _ = svd(f1, f1b, f2, f2b, f3, f3b, diagonal=diagonal, axis=axis)
+                u_v_area.append(trp)
             u_v_area_shuffle.append(u_v_area)
     else:
-        for i in range(perm):
-            np.random.shuffle(n_sessions) # Shuffle PFC/HP sessions
-            indices_HP = n_sessions[:len(HP['DM'][0])];  indices_PFC = n_sessions[len(HP['DM'][0]):]
-
-            # organise data for permutation test
-            PFC_shuffle_dm = all_subjects[np.asarray(indices_PFC)]; HP_shuffle_dm = all_subjects[np.asarray(indices_HP)]
-            PFC_shuffle_f = all_subjects_firing[np.asarray(indices_PFC)]; HP_shuffle_f = all_subjects_firing[np.asarray(indices_HP)]
-            HP_shuffle = [HP_shuffle_dm,HP_shuffle_f];  PFC_shuffle = [PFC_shuffle_dm,PFC_shuffle_f]
-
-            u_v_area = []
-            for data in [HP_shuffle,PFC_shuffle]: # find area under curve for HP and PFC
-                flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half = extract_data(data, perm = True, inds = inds)
-
-                trp, average_between_all,average_within_all = svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half, diagonal = diagonal, axis = axis)
-                u_v_area.append(trp) 
-
-            u_v_area_shuffle.append(u_v_area)
+        _njobs = -1 if perm > 20 else 1
+        u_v_area_shuffle = Parallel(n_jobs=_njobs)(
+            delayed(_one_perm_svd)(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds)
+            for _ in range(perm)
+        )
 
     return u_v_area_shuffle
 

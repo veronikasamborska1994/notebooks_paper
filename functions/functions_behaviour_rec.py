@@ -1,8 +1,17 @@
+"""Behavioural analysis functions for recording sessions.
+
+Similar analyses to functions_behaviour.py but adapted for the shorter
+recording sessions with concurrent neural data. Includes:
+- trials_till_reversal_plot_recordings: reversal learning during recordings
+- out_of_sequence_recordings: out-of-sequence poke errors during recordings
+- plot_forced: analysis of forced-choice trials
+"""
+
 import numpy as np
-import pylab as plt
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import scipy 
+import scipy
 from scipy import stats
 from statsmodels.stats.anova import AnovaRM
 from palettable import wesanderson as wes
@@ -66,12 +75,12 @@ def trials_till_reversal_plot_recordings(experiment):
     res = aovrm.fit()
     posthoc = pg.pairwise_tests(data = anova_pd, dv = 'Data',within = ['cond2'],subject = 'Sub_id',\
                              parametric = True, padjust = 'fdr_bh', effsize = 'hedges')
-    print('Rev 1 vs 2:', ' dof = ' + str(posthoc['dof'][0]), ' t = ' + str(np.round(posthoc['T'][0],2)) + ' p = ' + str(np.round(posthoc['p-corr'][0],3)))
-    print('Rev 1 vs 3:', ' dof = ' + str(posthoc['dof'][1]), ' t = ' + str(np.round(posthoc['T'][1],2)), ' p = ' + str(np.round(posthoc['p-corr'][1],3)))
-    print('Rev 1 vs 4:', ' dof = ' + str(posthoc['dof'][2]), ' t = ' + str(np.round(posthoc['T'][2],2)) + ' p = ' + str(np.round(posthoc['p-corr'][2],3)))
+    print('Rev 1 vs 2:', ' dof = ' + str(posthoc['dof'][0]), ' t = ' + str(np.round(posthoc['T'][0],2)) + ' p = ' + str(np.round(posthoc['p_corr'][0],3)))
+    print('Rev 1 vs 3:', ' dof = ' + str(posthoc['dof'][1]), ' t = ' + str(np.round(posthoc['T'][1],2)), ' p = ' + str(np.round(posthoc['p_corr'][1],3)))
+    print('Rev 1 vs 4:', ' dof = ' + str(posthoc['dof'][2]), ' t = ' + str(np.round(posthoc['T'][2],2)) + ' p = ' + str(np.round(posthoc['p_corr'][2],3)))
 
-    print('Problem:' + ' '+ 'df ='+ ' '+ str(int(res.anova_table['Num DF'][0])) + ' ' + str(res.anova_table['Den DF'][0]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'][0],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'][0], 3)));
-    print('Reversal:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'][1])) + ' ' + str(res.anova_table['Den DF'][1]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'][1],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'][1], 3)));
+    print('Problem:' + ' '+ 'df ='+ ' '+ str(int(res.anova_table['Num DF'].iloc[0])) + ' ' + str(res.anova_table['Den DF'].iloc[0]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'].iloc[0],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'].iloc[0], 3)));
+    print('Reversal:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[1])) + ' ' + str(res.anova_table['Den DF'].iloc[1]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'].iloc[1],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'].iloc[1], 3)));
    
  
     # Plot individual subjects
@@ -210,7 +219,7 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                         
                         elif event == poke_I_2 or event == poke_I_3 or event == poke_A_2 or event == poke_A_3 or event == poke_B_2 or event == poke_B_3:
                             if event != poke_I_1 and only_A_B == False:
-                                if choice_state == False and prev_choice == 'Poke_B_1' or prev_choice == 'Poke_A_1' :
+                                if choice_state == False and (prev_choice == 'Poke_B_1' or prev_choice == 'Poke_A_1'):
                                     wrong_count += 1 
                                                
                     
@@ -235,7 +244,7 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                        
                         elif event == poke_I_1 or event == poke_I_3 or event == poke_A_1 or event == poke_A_3 or event == poke_B_1 or event == poke_B_3:
                             if event != poke_I_2 and only_A_B == False:
-                                if choice_state == False and prev_choice == 'Poke_B_2' or prev_choice == 'Poke_A_2' :
+                                if choice_state == False and (prev_choice == 'Poke_B_2' or prev_choice == 'Poke_A_2'):
                                     wrong_count += 1 
                       
                     # record task 3 out of sequence pokes  (same logic as above)                   
@@ -260,7 +269,7 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                         
                         elif event == poke_I_1 or event == poke_I_2 or event == poke_A_2 or event == poke_A_1 or event == poke_B_2 or event == poke_B_1:
                             if event != poke_I_3 and only_A_B == False:
-                                if choice_state == False and prev_choice == 'Poke_B_3' or prev_choice == 'Poke_A_3' :
+                                if choice_state == False and (prev_choice == 'Poke_B_3' or prev_choice == 'Poke_A_3'):
                                     wrong_count += 1 
                       
                 session_wrong_choice = session_wrong_choice[:len(task)] 
@@ -288,12 +297,12 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
     res = aovrm.fit()
     posthoc = pg.pairwise_tests(data = anova_pd, dv = 'Data',within = ['cond2'],subject = 'Sub_id',\
                              parametric = True, padjust = 'fdr_bh', effsize = 'hedges')
-    print('Rev 1 vs 2:', ' dof = ' + str(posthoc['dof'][0]), ' t = ' + str(np.round(posthoc['T'][0],2)) + ' p = ' + str(np.round(posthoc['p-corr'][0],3)))
-    print('Rev 1 vs 3:', ' dof = ' + str(posthoc['dof'][1]), ' t = ' + str(np.round(posthoc['T'][1],2)), ' p = ' + str(np.round(posthoc['p-corr'][1],3)))
-    print('Rev 1 vs 4:', ' dof = ' + str(posthoc['dof'][2]), ' t = ' + str(np.round(posthoc['T'][2],2)) + ' p = ' + str(np.round(posthoc['p-corr'][2],3)))
+    print('Rev 1 vs 2:', ' dof = ' + str(posthoc['dof'][0]), ' t = ' + str(np.round(posthoc['T'][0],2)) + ' p = ' + str(np.round(posthoc['p_corr'][0],3)))
+    print('Rev 1 vs 3:', ' dof = ' + str(posthoc['dof'][1]), ' t = ' + str(np.round(posthoc['T'][1],2)), ' p = ' + str(np.round(posthoc['p_corr'][1],3)))
+    print('Rev 1 vs 4:', ' dof = ' + str(posthoc['dof'][2]), ' t = ' + str(np.round(posthoc['T'][2],2)) + ' p = ' + str(np.round(posthoc['p_corr'][2],3)))
 
-    print('Problem:' + ' '+ 'df ='+ ' '+ str(int(res.anova_table['Num DF'][0])) + ' ' + str(res.anova_table['Den DF'][0]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'][0],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'][0], 3)));
-    print('Reversal:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'][1])) + ' ' + str(res.anova_table['Den DF'][1]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'][1],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'][1], 3)));
+    print('Problem:' + ' '+ 'df ='+ ' '+ str(int(res.anova_table['Num DF'].iloc[0])) + ' ' + str(res.anova_table['Den DF'].iloc[0]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'].iloc[0],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'].iloc[0], 3)));
+    print('Reversal:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[1])) + ' ' + str(res.anova_table['Den DF'].iloc[1]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'].iloc[1],2)),'p = ' + ' ' + str(np.round(res.anova_table['Pr > F'].iloc[1], 3)));
    
  
     # Plot individual subjects
@@ -467,7 +476,7 @@ def forced_trials_(experiment):
                     state_1 = (-1 + state_1)*(-1)
                 if poke_A_2_rec_script != poke_A_2:
                     state_2 = (-1 + state_2)*(-1)
-                elif poke_A_3_rec_script != poke_A_3:
+                if poke_A_3_rec_script != poke_A_3:
                     state_3 = (-1 + state_3)*(-1)
                 state = np.hstack([state_1, state_2, state_3])   
                 events = [event for event in session.events if event.name in ['choice_state', 'init_trial','a_forced_state', 'b_forced_state',poke_A_1, poke_B_1,\
@@ -498,7 +507,7 @@ def forced_trials_(experiment):
                     forced_1 = (-1 + forced_1)*(-1)
                 if poke_A_2_rec_script != poke_A_2:
                     forced_2 = (-1 + forced_2)*(-1)
-                elif poke_A_3_rec_script != poke_A_3:
+                if poke_A_3_rec_script != poke_A_3:
                     forced_3 = (-1 + forced_3)*(-1)
                 forced_a_b = np.hstack([forced_1, forced_2, forced_3])
                 

@@ -1,13 +1,37 @@
+"""Plotting utilities for single-neuron firing rate visualisation.
+
+Generates per-neuron figures showing trial-averaged firing rates for each
+choice x reward x task condition, alongside a trial-by-trial heatmap and
+task/state timeline.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import palettable 
+import palettable
 from palettable import wesanderson as wes
 from functions.helper_functions import task_ind
 
 
-def plot_neuron(data, session_id = 0, neuron_ID = 0):  
-    ''' Simple function to plot firing rates in different tasks and conditions'''
+def plot_neuron(data, session_id=0, neuron_ID=0):
+    """Plot firing rates for a single neuron across tasks and conditions (Figure 2).
+
+    Creates a 2x5 figure with:
+      - Top row: mean +/- SEM firing rates for A/B x rewarded/non-rewarded
+        in each of the three task layouts, plus a trial-by-trial heatmap
+        and a task/state timeline.
+      - Bottom row: port layout diagrams showing A (green), B (pink),
+        and initiation (black) port positions.
+
+    Parameters
+    ----------
+    data : dict
+        Neural data dict with keys 'DM' (design matrices) and 'Data' (firing rates).
+    session_id : int
+        Which session to plot (index into data['DM'][0]).
+    neuron_ID : int
+        Which neuron to plot within the session.
+    """
     
     dm = data['DM'][0];  fr = data['Data'][0];  _xticks = [0,12, 24, 35, 42, 49, 63]; isl = wes.Royal2_5.mpl_colors
     x_pos = np.array([149, 68, 231, 0, 149, 298, 68, 231, 149])

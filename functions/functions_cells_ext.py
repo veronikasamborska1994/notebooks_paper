@@ -1,5 +1,15 @@
+"""Extended data figure analyses for neural recordings.
+
+Includes:
+- heatplot_sort_init_B / plot_Init_B_remapping: port-specific vs problem-general
+  representations when B-choice port becomes initiation port (Ext Fig 4)
+- trials_surprise / surprise_plot: surprise analysis measuring how well pre-switch
+  firing rate distributions predict post-switch activity (Ext Fig 8)
+- control_for_time: filter sessions where task transitions are temporally adjacent
+"""
+
 import numpy as np
-import pylab as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 from palettable import wesanderson as wes
 from scipy.ndimage import gaussian_filter1d
@@ -30,7 +40,7 @@ def heatplot_sort_init_B(data, ch = 1, title_plot = 'PFC A choice '):
         taskid = task_ind(task, a_pokes, b_pokes)
         
         task_1_r = np.where((taskid == 2) & (choices == ch) & (reward == 1))[0] # Find indicies for task 2
-        task_1_nr = np.where((taskid == 2) & (choices == ch & (reward == 0)))[0] # Find indicies for task 2
+        task_1_nr = np.where((taskid == 2) & (choices == ch) & (reward == 0))[0] # Find indicies for task 2
         task_2_r = np.where((taskid == 3) & (choices == ch)& (reward == 1))[0] # Find indicies for task 3
         task_2_nr = np.where((taskid == 3) & (choices == ch)& (reward == 0))[0] # Find indicies for task 3
         
@@ -57,7 +67,7 @@ def heatplot_sort_init_B(data, ch = 1, title_plot = 'PFC A choice '):
     activity_sorted_3_sort_by_2 = ch_3_norm[ordering_2,:]
     plt.subplot(2,2,2)
     plt.imshow(activity_sorted_3_sort_by_2, aspect ='auto', cmap = cmap)  
-    plt.xticks(tick_, tick_str); plt.title(title_plot + "Activity in Layout 3 sorted \n using soring from Layout 2")
+    plt.xticks(tick_, tick_str); plt.title(title_plot + "Activity in Layout 3 sorted \n using sorting from Layout 2")
     plt.ylabel(' # neuron')
 
     # find cells with peaks around choices and initiations 
@@ -72,6 +82,17 @@ def heatplot_sort_init_B(data, ch = 1, title_plot = 'PFC A choice '):
 
     
 def plot_Init_B_remapping(PFC, HP):
+    """Plot remapping when B-choice port becomes initiation port (Ext Fig 4).
+
+    Calls heatplot_sort_init_B for A and B choices in both PFC and HP,
+    then plots the cross-layout comparison of initiation-selective and
+    choice-selective neurons.
+
+    Parameters
+    ----------
+    PFC, HP : dict
+        Neural data dicts.
+    """
     task_2_init_A_PFC, task_2_init_std_A_PFC, task_3_choice_A_PFC, task_3_choice_std_A_PFC = heatplot_sort_init_B(PFC, ch = 1, title_plot = 'PFC A choice ')
     task_2_init_B_PFC, task_2_init_std_B_PFC, task_3_choice_B_PFC, task_3_choice_std_B_PFC = heatplot_sort_init_B(PFC, ch = 0, title_plot = 'PFC B choice ')
     task_2_init_A_HP, task_2_init_std_A_HP, task_3_choice_A_HP, task_3_choice_std_A_HP = heatplot_sort_init_B(HP, ch = 1, title_plot = 'CA1 A choice ')
@@ -166,7 +187,26 @@ def trials_surprise(data, compare_tasks = 1):
     return surprise_list_neurons_b_b_all, surprise_list_neurons_a_a_all
 
 
-def control_for_time(data, compare_tasks = 1):
+def control_for_time(data, compare_tasks=1):
+    """Filter sessions where the two compared tasks are temporally adjacent.
+
+    Only includes sessions where one task immediately follows the other,
+    to control for time-related confounds in the surprise analysis.
+
+    Parameters
+    ----------
+    data : dict
+        Neural data dict.
+    compare_tasks : int
+        Which task pair: 1 = T1-T2, 2 = T2-T3, 3 = T1-T3.
+
+    Returns
+    -------
+    task_time_confound_data : list
+        Firing rate arrays for qualifying sessions.
+    task_time_confound_dm : list
+        Design matrices for qualifying sessions.
+    """
     y = data['DM'][0]; x = data['Data'][0]
     task_time_confound_data = []; task_time_confound_dm = []
     
@@ -191,7 +231,14 @@ def control_for_time(data, compare_tasks = 1):
                 
     return task_time_confound_data,task_time_confound_dm
 
-def surprise_plot(HP, PFC):  
+def surprise_plot(HP, PFC):
+    """Plot surprise heatmaps around task transitions for all task pairs (Ext Fig 8).
+
+    Parameters
+    ----------
+    HP, PFC : dict
+        Neural data dicts.
+    """
     mean_b_b_t1_t2_HP, mean_a_a_t1_t2_HP  = trials_surprise(HP, compare_tasks = 1)
     mean_b_b_t2_t3_HP, mean_a_a_t2_t3_HP = trials_surprise(HP, compare_tasks = 2)
     mean_b_b_t1_t3_HP, mean_a_a_t1_t3_HP = trials_surprise(HP,  compare_tasks = 3)
