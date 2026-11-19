@@ -12,7 +12,7 @@ def _CPD(X,y):
         ols.fit(X_i,y)
         sse_X_i = np.sum((ols.predict(X_i) - y)**2, axis=0)
         if len(np.where(sse_X_i== 0)[0]) > 0:
-            cpd[:,i] = np.NaN
+            cpd[:,i] = np.nan
         else:
             cpd[:,i]=(sse_X_i-sse)/sse_X_i
     return cpd

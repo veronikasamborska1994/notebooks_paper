@@ -241,45 +241,43 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
     if dlc == False:
         cue = np.arange(34,62);  reward = np.arange(35,63) # indicies to loop through time around and after choice          ab = 0; re = 1;  re_ab = 2; ch_i = 3; tsp = 4
         prtd = 0; ab = 1; re = 2;  re_ab = 3; ch_i = 4; tsp = 5
-        p_list_99 = np.zeros((len(reward),6)) ;  p_list_95 = np.zeros((len(reward),6)) # list to store 99th and 95th percentiles at different time points
 
     else:
-        cue = np.arange(37,61);  reward = np.arange(38,62) # indicies to loop through time around and after choice   
+        cue = np.arange(37,61);  reward = np.arange(38,62) # indicies to loop through time around and after choice
         ab = 0; re = 1;  re_ab = 2; ch_i = 3; tsp = 4
-        p_list_99 = np.zeros((len(reward),5)) ;  p_list_95 = np.zeros((len(reward),5)) # list to store 99th and 95th percentiles at different time points
 
     corr_HP = []; corr_PFC = [] # list to store correlation matrices at different time points
-    # list to store real differences 
-    diff_space = []; diff_a_b = [];  diff_rew = []; diff_rew_ab = []; diff_ch_init = []; diff_a_spec = []; 
-    # indicies for port, ab choice, reward cpds 
+    # list to store real differences
+    diff_space = []; diff_a_b = [];  diff_rew = []; diff_rew_ab = []; diff_ch_init = []; diff_a_spec = [];
+    # indicies for port, ab choice, reward cpds
     cpd_PFC_list = [];  cpd_HP_list = []
-    k = 0
+    # accumulate per-permutation differences across time for max-statistic multiple comparison correction
+    all_hp_perm_list = []; all_pfc_perm_list = []
     for start,end in zip(cue, reward): # loop through the time points around and after choice and calculate RSAs
-        cpd_PFC, cpd_HP, matrix_for_correlations_PFC, matrix_for_correlations_HP, pfc_perm, hp_perm = regression_RSA(HP,PFC, start, end, perm_n = perm_n, animal_perm = animal_perm, dlc = dlc)  
-         # find 95th and 99th percentiles
-       
+        cpd_PFC, cpd_HP, matrix_for_correlations_PFC, matrix_for_correlations_HP, pfc_perm, hp_perm = regression_RSA(HP,PFC, start, end, perm_n = perm_n, animal_perm = animal_perm, dlc = dlc)
+
         corr_HP.append(matrix_for_correlations_HP); corr_PFC.append(matrix_for_correlations_PFC)
         cpd_PFC_list.append(cpd_PFC);  cpd_HP_list.append(cpd_HP)
-        
+        all_hp_perm_list.append(hp_perm); all_pfc_perm_list.append(pfc_perm)
+
         if dlc == False:
-            diff_space.append((cpd_HP[prtd]- cpd_PFC[prtd]));
-            p_list_95[k,prtd] = np.percentile((hp_perm[:,prtd] - pfc_perm[:,prtd]),95,0); p_list_99[k,prtd] = np.percentile((hp_perm[:,prtd] - pfc_perm[:,prtd]),99,0)
-    
+            diff_space.append((cpd_HP[prtd]- cpd_PFC[prtd]))
+
         diff_a_b.append((cpd_HP[ab]- cpd_PFC[ab]))
         diff_rew.append((cpd_PFC[re]- cpd_HP[re]));  diff_rew_ab.append((cpd_HP[re_ab]- cpd_PFC[re_ab]))
-        diff_ch_init.append((cpd_PFC[ch_i]- cpd_HP[ch_i])); diff_a_spec.append((cpd_HP[tsp]- cpd_PFC[tsp]));
-        p_list_95[k,ab] = np.percentile((hp_perm[:,ab] - pfc_perm[:,ab]),95,0); p_list_95[k,re] = np.percentile((pfc_perm[:,re] - hp_perm[:,re]),95,0)
-        p_list_95[k,re_ab] = np.percentile((hp_perm[:,re_ab] - pfc_perm[:,re_ab]),95,0);  p_list_95[k,ch_i] = np.percentile((pfc_perm[:,ch_i] - hp_perm[:,ch_i]),95,0)
-        p_list_95[k,tsp] = np.percentile((hp_perm[:,tsp] - pfc_perm[:,tsp]),95,0)
-    
-        p_list_99[k,ab] =  np.percentile((hp_perm[:,ab] - pfc_perm[:,ab]),99,0); p_list_99[k,re] = np.percentile((pfc_perm[:,re] - hp_perm[:,re]),99,0) 
-        p_list_99[k,re_ab] = np.percentile((hp_perm[:,re_ab] - pfc_perm[:,re_ab]),99,0);  p_list_99[k,ch_i] = np.percentile((pfc_perm[:,ch_i] - hp_perm[:,ch_i]),99,0)
-        p_list_99[k,tsp] = np.percentile((hp_perm[:,tsp] - pfc_perm[:,tsp]),99,0)
-        k += 1
-    
+        diff_ch_init.append((cpd_PFC[ch_i]- cpd_HP[ch_i])); diff_a_spec.append((cpd_HP[tsp]- cpd_PFC[tsp]))
+
     cpd_PFC_list = np.asarray(cpd_PFC_list); cpd_HP_list = np.asarray(cpd_HP_list)
-    p_list_95 = np.asarray(p_list_95); p_list_99 = np.asarray(p_list_99)
-    cpd_p_val_mult_compar_95 = np.max(p_list_95,0); cpd_p_val_mult_compar_99 = np.max(p_list_99,0)
+    # max-statistic correction: for each permutation find max difference across time, then take percentile
+    all_hp_perm = np.array(all_hp_perm_list)  # (n_times, perm_n, n_features)
+    all_pfc_perm = np.array(all_pfc_perm_list)  # (n_times, perm_n, n_features)
+    # signed differences per feature (HP - PFC, except re and ch_i where PFC > HP)
+    signed_diffs = all_hp_perm - all_pfc_perm  # (n_times, perm_n, n_features)
+    signed_diffs[:, :, re] = all_pfc_perm[:, :, re] - all_hp_perm[:, :, re]
+    signed_diffs[:, :, ch_i] = all_pfc_perm[:, :, ch_i] - all_hp_perm[:, :, ch_i]
+    max_per_perm = np.max(signed_diffs, axis=0)  # (perm_n, n_features) - max over time per permutation
+    cpd_p_val_mult_compar_95 = np.percentile(max_per_perm, 95, axis=0)
+    cpd_p_val_mult_compar_99 = np.percentile(max_per_perm, 99, axis=0)
     if dlc == False:
         space_sig = np.where(diff_space > cpd_p_val_mult_compar_95[prtd])[0]; 
         space_sig_99 = np.where(diff_space > cpd_p_val_mult_compar_99[prtd])[0]; 
@@ -309,7 +307,7 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
         plt.plot(cpd_PFC_list[:,pred]*100, color = isl[3])
         plt.xticks(inds,['C', 'R', '+0.5','+1'])
         plt.plot(sign_95[pred], np.ones(len(sign_95[pred]))*(np.max([cpd_HP_list[:,pred],cpd_PFC_list[:,pred]]))*100+ offset[pred], '.', markersize = 2, color = 'grey')
-        plt.plot(sign_99[pred], np.ones(len(sign_99[pred]))*(np.max([cpd_HP_list[:,pred],cpd_PFC_list[:,pred]]))*100+ offset[pred], '.', markersize = 4, color = 'grey',label = '< .001 diff PFC and HP ')
+        plt.plot(sign_99[pred], np.ones(len(sign_99[pred]))*(np.max([cpd_HP_list[:,pred],cpd_PFC_list[:,pred]]))*100+ offset[pred], '.', markersize = 4, color = 'grey',label = '< .01 diff PFC and HP ')
         plt.ylim(-0.1,(np.max([cpd_HP_list[:,pred], cpd_PFC_list[:,pred]]))*100+offset[pred]+1)
         plt.ylabel('CPD (%)') 
         plt.title(pred_str[pred])

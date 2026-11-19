@@ -54,9 +54,9 @@ def plot_policy_during_recordings(PFC, HP, n = 12):
         results_array = []
         for  s, sess in enumerate(dm):        
             DM = dm[s]; choices = DM[:,1]; reward = DM[:,2]
-            previous_rewards = scipy.linalg.toeplitz(reward, np.zeros((1,n)))[n-1:-1] # find rewards on n-back trials
-            previous_choices = scipy.linalg.toeplitz(choices, np.zeros((1,n)))[n-1:-1] # find choices on n-back trials
-            interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros((1,n)))[n-1:-1] #interactions rewards x choice
+            previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
+            previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
+            interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] #interactions rewards x choice
             choices_current = (choices[n:]) # current choices need to start at nth trial
             ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
             X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
@@ -109,9 +109,9 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         n_trials, n_neurons, n_timepoints = firing_rates.shape
         choices = DM[:,1]; reward = DM[:,2];  choices_current = choices-0.5 
     
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros((1,n)))[n-1:-1] # find rewards on n-back trials 
-        previous_choices = scipy.linalg.toeplitz(0.5-choices, np.zeros((1,n)))[n-1:-1] # find choices on n-back trials       
-        interactions = scipy.linalg.toeplitz((((0.5-choices)*(reward-0.5))*2),np.zeros((1,n)))[n-1:-1] # interactions rewards x choice
+        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials 
+        previous_choices = scipy.linalg.toeplitz(0.5-choices, np.zeros(n))[n-1:-1] # find choices on n-back trials       
+        interactions = scipy.linalg.toeplitz((((0.5-choices)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
         ones = np.ones(len(interactions)).reshape(len(interactions),1) # constant
         X = np.hstack([previous_rewards,previous_choices,interactions,ones]) # design matrix for calculating policy
         policy = np.matmul(X, policy_beh) # calculate policy on each trial
@@ -183,9 +183,9 @@ def policy_for_GLM(data, n, perm = False):
     results_array = []
     for  s, sess in enumerate(dm):     
         DM = dm[s]; choices = DM[:,1]; reward = DM[:,2];
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros((1,n)))[n-1:-1] # find rewards on n-back trials
-        previous_choices = scipy.linalg.toeplitz(choices, np.zeros((1,n)))[n-1:-1] # find choices on n-back trials
-        interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros((1,n)))[n-1:-1] # interactions rewards x choice
+        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
+        previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
+        interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
         choices_current = (choices[n:]) # current choices need to start at nth trial
         ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
         X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
@@ -220,9 +220,9 @@ def policy_A_B(data, n = 10, plot_a = False, perm = True):
         for i in tasks: 
             task_index = np.where(taskid == i)[0]
             rewards_task = reward_current[task_index]; choices_task = choices_current[task_index] 
-            previous_rewards_task = scipy.linalg.toeplitz(rewards_task, np.zeros((1,n)))[n-1:-1] # find rewards on n-back trials 
-            previous_choices_task = scipy.linalg.toeplitz(0.5-choices_task, np.zeros((1,n)))[n-1:-1] # find choices on n-back trials       
-            interactions_task = scipy.linalg.toeplitz((((0.5-choices_task)*(rewards_task-0.5))*2),np.zeros((1,n)))[n-1:-1] # interactions rewards x choice
+            previous_rewards_task = scipy.linalg.toeplitz(rewards_task, np.zeros(n))[n-1:-1] # find rewards on n-back trials 
+            previous_choices_task = scipy.linalg.toeplitz(0.5-choices_task, np.zeros(n))[n-1:-1] # find choices on n-back trials       
+            interactions_task = scipy.linalg.toeplitz((((0.5-choices_task)*(rewards_task-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
             ones = np.ones(len(interactions_task)).reshape(len(interactions_task),1) # constant
             X = np.hstack([previous_rewards_task, previous_choices_task, interactions_task, ones]) # design matrix for calculating policy
             policy = np.matmul(X, policy_beh) # calculate policy on each trial
@@ -334,11 +334,11 @@ def perumute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, ani
                     coefs_tasks.append(coef_time) # store coefficients
                 # store mean corr coef across 3 tasks for init, choice and outcome HP and PFC (# CA1 init, CA1 ch, CA1 rew, PFC init, PFC ch, PFC rew)
                 task_mean_A_B.append([np.mean(coefs_tasks[:3],0),np.mean(coefs_tasks[3:6],0), np.mean(coefs_tasks[6:9],0),np.mean(coefs_tasks[9:12],0),np.mean(coefs_tasks[12:15],0), np.mean(coefs_tasks[15:18],0)])
-        b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # difference between A and B (CA1 init, CA1 ch, CA1 rew, PFC init, PFC ch, PFC rew)
-        # store permuted differences of differences between B and A between CA1 and PFC at initiation, choice and outcome time       
-        diff_PFC_HP_perm.append((np.asarray(b_a[3:])- np.asarray(b_a[:3]))) # difference in B - A PFC - CA1
-        PFC_HP_perm.append((np.asarray(task_mean_A_B)[:,3:]- np.asarray(task_mean_A_B)[:,:3])) # store difference between PFC and CA1 on A and on B choices
-      
+            b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # difference between A and B (CA1 init, CA1 ch, CA1 rew, PFC init, PFC ch, PFC rew)
+            # store permuted differences of differences between B and A between CA1 and PFC at initiation, choice and outcome time
+            diff_PFC_HP_perm.append((np.asarray(b_a[3:])- np.asarray(b_a[:3]))) # difference in B - A PFC - CA1
+            PFC_HP_perm.append((np.asarray(task_mean_A_B)[:,3:]- np.asarray(task_mean_A_B)[:,:3])) # store difference between PFC and CA1 on A and on B choices
+
     else:
         animals_PFC = [0,1,2,3]; animals_HP = [4,5,6]
         m, n = len(animals_PFC), len(animals_HP)
@@ -405,10 +405,10 @@ def perumute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, ani
                 # store mean corr coef across 3 tasks for init, choice and outcome HP and PFC (# CA1 init, CA1 ch, CA1 rew, PFC init, PFC ch, PFC rew)
                 task_mean_A_B.append([np.mean(coefs_tasks[:3],0),np.mean(coefs_tasks[3:6],0), np.mean(coefs_tasks[6:9],0),np.mean(coefs_tasks[9:12],0),np.mean(coefs_tasks[12:15],0), np.mean(coefs_tasks[15:18],0)])
 
-        b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # difference between A and B (CA1 init, CA1 ch, CA1 rew, PFC init, PFC ch, PFC rew)
-        # store permuted differences of differences between B and A between CA1 and PFC at initiation, choice and outcome time       
-        diff_PFC_HP_perm.append((np.asarray(b_a[3:])- np.asarray(b_a[:3]))) # difference in B - A PFC - CA1
-        PFC_HP_perm.append((np.asarray(task_mean_A_B)[:,3:]- np.asarray(task_mean_A_B)[:,:3])) # store difference between PFC and CA1 on A and on B choices
+            b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # difference between A and B (CA1 init, CA1 ch, CA1 rew, PFC init, PFC ch, PFC rew)
+            # store permuted differences of differences between B and A between CA1 and PFC at initiation, choice and outcome time
+            diff_PFC_HP_perm.append((np.asarray(b_a[3:])- np.asarray(b_a[:3]))) # difference in B - A PFC - CA1
+            PFC_HP_perm.append((np.asarray(task_mean_A_B)[:,3:]- np.asarray(task_mean_A_B)[:,:3])) # store difference between PFC and CA1 on A and on B choices
     return diff_PFC_HP_perm, PFC_HP_perm
 
 def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, animal_perm = False):
