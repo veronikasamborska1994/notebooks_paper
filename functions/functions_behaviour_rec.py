@@ -655,14 +655,14 @@ def plot_forced(experiment):
     data_b = {'Choice Probability': d_b, 'Poke Identity': d_str}
     df_b = pd.DataFrame(data=data_b)
 
-    g = sns.catplot(x="Poke Identity", y="Choice Probability",kind="box", data=df_a, palette="ch:.25")
+    g = sns.catplot(x="Poke Identity", y="Choice Probability",kind="box", data=df_a, hue="Poke Identity", palette="ch:.25", legend=False)
     sns.swarmplot(x="Poke Identity", y="Choice Probability", color="k", size=3, data=df_a, ax=g.ax)
     plt.title('B good, A forced')
     plt.tight_layout()
 
 
     g_1 = sns.catplot(x="Poke Identity", y="Choice Probability",
-            kind="box", data=df_b,  palette="ch:.25")
+            kind="box", data=df_b, hue="Poke Identity", palette="ch:.25", legend=False)
     sns.swarmplot(x="Poke Identity", y="Choice Probability", color="k", size=3, data=df_b, ax=g_1.ax)
     plt.title('A good, B forced')
     plt.tight_layout()
