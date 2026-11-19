@@ -442,11 +442,11 @@ def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm
     uv_95 = np.percentile(diff_uv,95)*100; real_uv = trp_hp*100 - trp_pfc*100
     diff_uv = np.asarray(diff_uv)*100
     
-    plt.hist(diff_uv, color = 'grey', alpha = 0.5, label = 'Null distribution')
-    plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Observed difference')
-    plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black', label = '95th percentile')
+    plt.hist(diff_uv, color = 'grey', alpha = 0.5)
+    plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Difference in the data')
+    plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black', label = '95% confidence interval')
     plt.ylabel('Count')
-    plt.xlabel('Permuted Differences')
+    plt.xlabel('Permuted differences')
     plt.legend(fontsize = 7)
     if d == False:
         plt.title('Cellular and temporal singular vectors')
