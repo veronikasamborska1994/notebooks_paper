@@ -17,7 +17,7 @@ from palettable import wesanderson as wes
 from itertools import combinations
 from math import factorial
 from joblib import Parallel, delayed
-from functions.helper_functions import _CPD, animal_exp_permute
+from functions.helper_functions import _CPD, animal_exp_permute, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
 
 
 def _one_perm_glm(all_subjects_DM, all_subjects_fr, n_HP_sessions):
@@ -276,10 +276,7 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
     cpd_HP, cpd_perm_HP =  GLM_roll_time(HP, perm = n_perm)
     cpd_PFC, cpd_perm_PFC =  GLM_roll_time(PFC, perm = n_perm)
     p_95, p_99, real_diff = GLM_perm_across_regions(HP, PFC, perm = n_perm,  animal_perm = animal_perm)
-    if dlc == False:
-        _xticks = [0,12, 24, 35, 42, 49, 63]
-    else:
-        _xticks = [0,12.5, 25, 38, 45, 51, 64]
+    _xticks = XTICK_POSITIONS if not dlc else XTICK_POSITIONS_DLC
     # significance levels for session permutation across animal groups (between region comparison)
     time_controlled_95 = np.max(p_95,0); time_controlled_99 = np.max(p_99,0) # corrected for multiple tests
     indicies_95 = np.where(real_diff > time_controlled_95);indicies_99 = np.where(real_diff > time_controlled_99)
@@ -328,7 +325,7 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
                 axs[pred].plot(index_95, np.ones(index_95.shape)*ymax + offset2, '.', markersize = 2, color = 'grey')
                 axs[pred].plot(index_99, np.ones(index_99.shape)*ymax + offset2, '.', markersize = 4, color = 'grey',label = '< .001 diff PFC and HP ')
                 axs[pred].set_xticks(_xticks)
-                axs[pred].set_xticklabels(['-1','-0.5','Init', 'Ch','R', '+0.5', '+1'])
+                axs[pred].set_xticklabels(XTICK_LABELS)
                 axs[pred].set_xlabel('Time in Trial (s)')
                 axs[pred].set_ylabel('CPD (%)')
                 sns.despine()

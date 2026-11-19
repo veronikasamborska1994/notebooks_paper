@@ -44,76 +44,32 @@ def extract_data(data, perm = False, inds =  np.arange(13,51)):
     n_neurons_cum = 0
     len_trial = len(inds)
     
-    # Create matrices to store data from tasks split by first and second half 
-    flattened_all_clusters_task_1_first_half =  np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_1_second_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_2_first_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_2_second_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_3_first_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_3_second_half = np.zeros((neurons,len_trial*4))
-     
-    for  s, sess in enumerate(all_firing): # iterate through sessions
+    # Create matrices to store data: 3 tasks × 2 halves (first, second)
+    result = [[np.zeros((neurons, len_trial * 4)) for _ in range(2)] for _ in range(3)]
+
+    # 4 conditions: A rewarded, A non-rewarded, B rewarded, B non-rewarded
+    conditions = [(1, 1), (0, 1), (1, 0), (0, 0)]  # (reward, choice) pairs
+
+    for s, sess in enumerate(all_firing): # iterate through sessions
             DM = all_subjects[s]
             firing_rates = all_firing[s][:,:,inds]
             n_trials, n_neurons, n_timepoints = firing_rates.shape
-            n_neurons_cum += n_neurons 
-            
+            n_neurons_cum += n_neurons
+            row_slice = slice(n_neurons_cum - n_neurons, n_neurons_cum)
+
             # extract trial information (reward, task, choice A/B)
-            choices = DM[:,1]; reward = DM[:,2]; task =  DM[:,5]; 
-            task_1 = np.where(task == 1)[0]; task_2 = np.where(task == 2)[0]; task_3 = np.where(task == 3)[0]
-        
-            # task indicies of the first/last half
-            task_1_1 = task_1[:int(len(task_1)/2)]; task_1_2 = task_1[int(len(task_1)/2):] 
-            task_2_1 = task_2[:int(len(task_2)/2)]; task_2_2 = task_2[int(len(task_2)/2):]
-            task_3_1 = task_3[:int(len(task_3)/2)]; task_3_2 = task_3[int(len(task_3)/2):]
-            
-            
-            # A rewarded and A non-rewarded Task 1 First Half
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_1_1))],0)
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_1_1))],0)
-            # B rewarded and B non-rewarded Task 1 First Half
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_1_1))],0)
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_1_1))],0)
+            choices = DM[:,1]; reward = DM[:,2]; task = DM[:,5]
 
-            # A rewarded and A non-rewarded Task 1 Second Half
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial]  = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_1_2))],0)
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_1_2))],0)
-            # B rewarded and B non-rewarded Task 1 Second Half
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_1_2))],0)
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_1_2))],0)
-            
-            # A rewarded and A non-rewarded Task 2 First Half
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_2_1))],0)
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_2_1))],0)
-            # B rewarded and B non-rewarded Task 2 First Half
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_2_1))],0)
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_2_1))],0)
+            for t_idx in range(3):  # 3 tasks
+                task_trials = np.where(task == t_idx + 1)[0]
+                halves = [task_trials[:len(task_trials)//2], task_trials[len(task_trials)//2:]]
+                for h_idx, half_trials in enumerate(halves):
+                    for c_idx, (rew_val, ch_val) in enumerate(conditions):
+                        trial_inds = np.intersect1d(np.where((reward == rew_val) & (choices == ch_val))[0], half_trials)
+                        col_slice = slice(len_trial * c_idx, len_trial * (c_idx + 1))
+                        result[t_idx][h_idx][row_slice, col_slice] = np.mean(firing_rates[trial_inds], 0)
 
-            # A rewarded and A non-rewarded Task 2 Second Half
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial]  = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_2_2))],0)
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_2_2))],0)
-            # B rewarded and B non-rewarded Task 2 Second Half
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_2_2))],0)
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4]= np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_2_2))],0)
-           
-            # A rewarded and A non-rewarded Task 3 First Half 
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial]  = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_3_1))],0)
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2]= np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_3_1))],0)
-            # B rewarded and B non-rewarded Task 3 First Half
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_3_1))],0)
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4]= np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_3_1))],0)
-
-            # A rewarded and A non-rewarded Task 3 Second Half             
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_3_2))],0)
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_3_2))],0)
-            # B rewarded and B non-rewarded Task 3 Second Half
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3]= np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_3_2))],0)
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_3_2))],0)
-         
-      
-    return flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-        flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-        flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half
+    return (result[0][0], result[0][1], result[1][0], result[1][1], result[2][0], result[2][1])
        
 def svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
     flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import palettable
 from palettable import wesanderson as wes
-from functions.helper_functions import task_ind
+from functions.helper_functions import task_ind, XTICK_POSITIONS, XTICK_LABELS
 
 
 def plot_neuron(data, session_id=0, neuron_ID=0):
@@ -33,7 +33,7 @@ def plot_neuron(data, session_id=0, neuron_ID=0):
         Which neuron to plot within the session.
     """
     
-    dm = data['DM'][0];  fr = data['Data'][0];  _xticks = [0,12, 24, 35, 42, 49, 63]; isl = wes.Royal2_5.mpl_colors
+    dm = data['DM'][0];  fr = data['Data'][0];  _xticks = XTICK_POSITIONS; isl = wes.Royal2_5.mpl_colors
     x_pos = np.array([149, 68, 231, 0, 149, 298, 68, 231, 149])
     y_pos = -1 * np.array([0, 25, 25, 62, 62, 62, 100, 100, 124])
     for s,session in enumerate(dm):     
@@ -113,7 +113,7 @@ def plot_neuron(data, session_id=0, neuron_ID=0):
                         plt.plot(tasks_fr[sub-1][3][neuron], color = isl[0], linestyle = ':',  label ='B NR')     
                         plt.fill_between(np.arange(trial_length),tasks_fr[sub-1][3][neuron]+tasks_fr_std[sub-1][3][neuron],\
                                         tasks_fr[sub-1][3][neuron]-tasks_fr_std[sub-1][3][neuron],alpha = 0.2, color =isl[0])
-                        plt.xticks(_xticks, ['-1','-0.5','Init', 'Ch','R', '+0.5', '+1'], fontsize = 7)
+                        plt.xticks(_xticks, XTICK_LABELS, fontsize = 7)
                         plt.ylabel('firing rate', fontsize = 7)
        
 

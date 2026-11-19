@@ -22,7 +22,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 from itertools import combinations
 from joblib import Parallel, delayed
-from functions.helper_functions import task_ind, _CPD, animal_exp_permute
+from functions.helper_functions import (task_ind, _CPD, animal_exp_permute,
+    HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
+    XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS, TIME_INDICES, TIME_INDICES_DLC)
 
 
 def _batch_corrcoef(X, y):
@@ -48,14 +50,9 @@ def plot_policy_during_recordings(PFC, HP, n = 12):
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
     outcomes (not shown) and choice-outcome interactions, Figure 5A.'''
     
-    # sessions to split by animals
-    HP_1 = 15; HP_2 = 7  
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13
-    HP_1_sess = HP['DM'][0][:HP_1]; HP_2_sess = HP['DM'][0][HP_1:HP_1+HP_2]
-    HP_3_sess = HP['DM'][0][HP_1+HP_2:]
-    PFC_1_sess = PFC['DM'][0][:PFC_1]; PFC_2_sess = PFC['DM'][0][PFC_1:PFC_1+PFC_2]
-    PFC_3_sess = PFC['DM'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3];  PFC_4_sess = PFC['DM'][0][PFC_1+PFC_2+PFC_3:]
-    d = [HP_1_sess, HP_2_sess, HP_3_sess, PFC_1_sess, PFC_2_sess, PFC_3_sess, PFC_4_sess]
+    # Split sessions by animal using shared constants
+    all_subjects_DM, _ = animal_exp_permute(HP, PFC)
+    d = all_subjects_DM
      
     results_array_subj = []; 
     for dm in d:
@@ -149,10 +146,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     cpd_HP, cpd_perm_HP =  GLM_policy_roll_tome(HP, perm = n_perm, n = n)
     cpd_PFC, cpd_perm_PFC =  GLM_policy_roll_tome(PFC, perm =  n_perm, n = n)
     cpd_HP_m = np.nanmean(cpd_HP,0); cpd_PFC_m = np.nanmean(cpd_PFC,0)
-    if  dlc == False:
-        _xticks = [0,12, 24, 35, 42, 49, 63]
-    else:
-        _xticks = [0,12.5, 25, 38, 45, 51, 63]
+    _xticks = XTICK_POSITIONS if not dlc else XTICK_POSITIONS_DLC
     # lists of cpds and permuted cpds for plotting
     cpds = [cpd_PFC_m[:,:-1],cpd_HP_m[:,:-1]]; cpds_perms = [cpd_perm_PFC[:,:,:,:-1], cpd_perm_HP[:,:,:,:-1]]
     # plotting params
@@ -175,7 +169,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
             p_vals = array_pvals[:,pred]; t05 = t[p_vals == 0.05]; t001 = t[p_vals == 0.001]
             plt.plot(t05, np.ones(t05.shape)*ymax, '.', markersize = 2, color = clrs[pred])
             plt.plot(t001, np.ones(t001.shape)*ymax, '.', markersize = 4, color = clrs[pred])
-            plt.xticks(_xticks, ['-1','-0.5','Init', 'Ch','R', '+0.5', '+1']) 
+            plt.xticks(_xticks, XTICK_LABELS)
         plt.xlabel('Time in Trial (s)')
         plt.ylabel('CPD (%)')
     plt.legend(); sns.despine()
@@ -386,10 +380,10 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
     policy calculations; default is 11 based on significance testing after training
     perm_n is the number of permutation to run 
     '''
-    if dlc == False:
-        time_ind = [24, 35, 42]; _xticks = [0,12, 24, 35, 42, 49, 63]
+    if not dlc:
+        time_ind = TIME_INDICES; _xticks = XTICK_POSITIONS
     else:
-        time_ind = [25, 38, 45]; _xticks = [0,12.5, 25, 38, 45, 51, 64]
+        time_ind = TIME_INDICES_DLC; _xticks = XTICK_POSITIONS_DLC
         
     init_t = time_ind[0]; ch_t = time_ind[1]; r_t = time_ind[2] # initiation, choice, outcome
     # extract policy coefficients on A and B choices in PFC and CA1
@@ -476,7 +470,7 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
                     axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.07, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
                     axs[per].set_xticks(_xticks)
                     axs[per].set_ylim(-0.15, ymax+0.08)
-                    axs[per].set_xticklabels(['-1','-0.5','Init', 'Ch','R', '+0.5', '+1'])
+                    axs[per].set_xticklabels(XTICK_LABELS)
                     axs[per].set_xlabel('Time in Trial (s)')
                     axs[per].set_ylabel('Correlation Coefficient')
                         
@@ -577,8 +571,8 @@ def plot_diagonal_sums(HP, PFC,c_1 = 1, perm_n = 2, dlc = False, animal_perm = F
     for n, corr in enumerate([mean_value_a_HP, mean_value_b_HP,mean_value_a_PFC,mean_value_b_PFC]):
         plt.subplot(1,4,n+1)
         plt.imshow(corr[index:,:index], cmap = cmap, vmin = cmin, vmax = cmax)
-        plt.xticks(_xticks, ['-1','-0.5','Init', 'Ch','R', '+0.5', '+1'])    
-        plt.yticks(_xticks, ['-1','-0.5','Init', 'Ch','R', '+0.5', '+1']) 
+        plt.xticks(_xticks, XTICK_LABELS)
+        plt.yticks(_xticks, XTICK_LABELS)
         plt.title(str_title[n])
         plt.colorbar(label = 'Correlation Coefficient')
     plt.tight_layout()

@@ -11,6 +11,19 @@ Contains:
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
+# Sessions per animal for each brain region
+HP_SESSIONS_PER_ANIMAL = (15, 7)       # 3 CA1 animals (last group is remainder)
+PFC_SESSIONS_PER_ANIMAL = (9, 16, 13)  # 4 PFC animals (last group is remainder)
+
+# Standard x-axis tick positions and labels for trial-aligned plots
+XTICK_POSITIONS = [0, 12, 24, 35, 42, 49, 63]
+XTICK_POSITIONS_DLC = [0, 12.5, 25, 38, 45, 51, 64]
+XTICK_LABELS = ['-1', '-0.5', 'Init', 'Ch', 'R', '+0.5', '+1']
+
+# Key event time indices within trial
+TIME_INDICES = [24, 35, 42]       # init, choice, outcome
+TIME_INDICES_DLC = [25, 38, 45]
+
 
 def animal_exp_permute(all_sessions_HP, all_sessions_PFC):
     """Split HP and PFC session data by animal for permutation testing.
@@ -33,8 +46,8 @@ def animal_exp_permute(all_sessions_HP, all_sessions_PFC):
     all_subjects_fr : list of ndarray
         Firing rates grouped by animal (same order).
     """
-    HP_1 = 15; HP_2 = 7  # CA1 sessions per animal
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13  # PFC sessions per animal
+    HP_1, HP_2 = HP_SESSIONS_PER_ANIMAL
+    PFC_1, PFC_2, PFC_3 = PFC_SESSIONS_PER_ANIMAL
 
     # Design matrices per animal
     HP_all_sessions_1 = all_sessions_HP['DM'][0][:HP_1]
