@@ -62,7 +62,7 @@ class Session():
 
         data_lines = [line[2:].split(' ') for line in all_lines if line[0]=='D']
 
-        self.events = [Event(int(dl[0]), ID2name[int(dl[1])]) for dl in data_lines]
+        self.events = [Event(int(dl[0]), ID2name[int(dl[1])]) for dl in data_lines if int(dl[1]) in ID2name]
 
         self.times = {event_name: np.array([ev.time for ev in self.events if ev.name == event_name])  
                       for event_name in ID2name.values()}
