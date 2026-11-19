@@ -146,7 +146,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     cpd_HP, cpd_perm_HP =  GLM_policy_roll_tome(HP, perm = n_perm, n = n)
     cpd_PFC, cpd_perm_PFC =  GLM_policy_roll_tome(PFC, perm =  n_perm, n = n)
     cpd_HP_m = np.nanmean(cpd_HP,0); cpd_PFC_m = np.nanmean(cpd_PFC,0)
-    _xticks = XTICK_POSITIONS if not dlc else XTICK_POSITIONS_DLC
+    _xticks = XTICK_POSITIONS if not dlc else [0, 12.5, 25, 38, 45, 51, 63]
     # lists of cpds and permuted cpds for plotting
     cpds = [cpd_PFC_m[:,:-1],cpd_HP_m[:,:-1]]; cpds_perms = [cpd_perm_PFC[:,:,:,:-1], cpd_perm_HP[:,:,:,:-1]]
     # plotting params
