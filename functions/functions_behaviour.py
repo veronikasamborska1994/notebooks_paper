@@ -51,7 +51,7 @@ def trials_till_reversal_plot(experiment):
     
     tasks = 10;  reversals = 10; subject_IDs = experiment.subject_IDs; n_subjects = len(subject_IDs)  
     reversal_to_threshold = np.ones(shape=(n_subjects,tasks,reversals)) # subject, task number, reversal number
-    reversal_to_threshold[:] = np.NaN  # fill it with NaNs 
+    reversal_to_threshold[:] = np.nan  # fill it with NaNs
 
     for n_subj, subject_ID in enumerate(subject_IDs):
         subject_sessions = experiment.get_sessions(subject_IDs = [subject_ID])
@@ -244,7 +244,7 @@ def out_of_sequence(experiment, first_task_only = False):
    
     tasks = 10; reversals = 10; subject_IDs = experiment.subject_IDs; n_subjects = len(subject_IDs)  
     bad_pokes = np.zeros([n_subjects,tasks,reversals])  # subject, task number, reversal number
-    bad_pokes[:] = np.NaN # fill it with NaNs 
+    bad_pokes[:] = np.nan # fill it with NaNs
     
     for n_subj, subject_ID in enumerate(subject_IDs):
         subject_sessions = experiment.get_sessions(subject_ID)
@@ -471,15 +471,16 @@ def policy_training(experiment, subject_IDs ='all'):
             if j == 0:
                 previous_session_config = configuration[0] # if first session find poke configuration 
                 
-            elif configuration[0]!= previous_session_config: # check if configuration changed in this session 
-                previous_session_config = configuration[0]  
+            elif configuration[0]!= previous_session_config: # check if configuration changed in this session
+                previous_session_config = configuration[0]
                 results_task.append(np.mean(results_session,0)) # append results if configuration changed
+                results_session = [] # reset for next problem
                 
             if len(choices) > n*3: # check there is enough trials for regression in that session
                 reward = session.trial_data['outcomes'] # rewards
-                previous_rewards = scipy.linalg.toeplitz(reward, np.zeros((1,n)))[n-1:-1] # find rewards on n-back trials
-                previous_choices = scipy.linalg.toeplitz(choices, np.zeros((1,n)))[n-1:-1] # find choices on n-back trials
-                interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros((1,n)))[n-1:-1] #interactions rewards x choice
+                previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
+                previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
+                interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] #interactions rewards x choice
                 choices_current = (choices[n:]) # current choices need to start at nth trial
                 ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
                 X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
@@ -546,7 +547,7 @@ def plot_policy_during_training(experiment):
     _1_back_rew_ch = choices_X_reward[:,:,0]; _other_back_rew_ch = np.mean(choices_X_reward[:,:,1:],2)
         
     n_tasks = 10; n_subj = 9
-    subject_id = np.tile(np.arange(n_tasks), n_subj)
+    subject_id = np.repeat(np.arange(n_subj), n_tasks)
     fraction_id = np.zeros(n_subj*n_tasks)
     k = 0 
     for n in range(10):

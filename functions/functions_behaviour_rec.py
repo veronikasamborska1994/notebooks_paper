@@ -40,7 +40,7 @@ def trials_till_reversal_plot_recordings(experiment):
            
             if len(threshold_crossing_trials) > 11: # only look at sessions for when 4 blocks in each task happened
                 reversal_to_threshold = np.zeros((12)); reversal_number = 0
-                reversal_to_threshold[:] = np.NaN
+                reversal_to_threshold[:] = np.nan
                 for i, crossing_trial in enumerate(threshold_crossing_trials): 
                     if reversal_number <  12:
                         if i == 0: # first element in the threshold_crossing_trials_list 

@@ -238,7 +238,7 @@ def permute_subjects(HP, PFC):
         subj_pfc_yx.append(cnf_matrix_subj_y_x)
   
             
-    return  perm_all_xy, perm_all_yx, subj_hp_xy, subj_hp_yx, subj_pfc_yx, subj_pfc_yx
+    return  perm_all_xy, perm_all_yx, subj_hp_xy, subj_hp_yx, subj_pfc_xy, subj_pfc_yx
 
 def plot(HP, PFC):  
     '''' Plotting function for different patterns of decoding in Figure 3F, G.'''
