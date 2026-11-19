@@ -287,7 +287,7 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
     signed_diffs[:, :, ch_i] = all_pfc_perm[:, :, ch_i] - all_hp_perm[:, :, ch_i]
     max_per_perm = np.max(signed_diffs, axis=0)  # (perm_n, n_features) - max over time per permutation
     cpd_p_val_mult_compar_95 = np.percentile(max_per_perm, 95, axis=0)
-    cpd_p_val_mult_compar_99 = np.percentile(max_per_perm, 99, axis=0)
+    cpd_p_val_mult_compar_99 = np.percentile(max_per_perm, 99.9, axis=0)  # P < 0.001
     if dlc == False:
         space_sig = np.where(diff_space > cpd_p_val_mult_compar_95[prtd])[0]; 
         space_sig_99 = np.where(diff_space > cpd_p_val_mult_compar_99[prtd])[0]; 

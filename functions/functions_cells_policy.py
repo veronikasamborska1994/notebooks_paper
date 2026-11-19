@@ -156,7 +156,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     # plot cpds and significance levels
     for c,cpd in enumerate(cpds): 
         values_95 = np.max(np.percentile(np.mean(cpds_perms[c],1),95,0),0) # indicate where significant at 0.05 for each region (loop) 
-        values_99 = np.max(np.percentile(np.mean(cpds_perms[c],1),99,0),0) # indicate where significant at 0.001 for each region (loop)
+        values_99 = np.max(np.percentile(np.mean(cpds_perms[c],1),99.9,0),0) # 99.9th percentile (P < 0.001)
         cpd_max = np.max(cpd); plt.subplot(1,2,c+1); plt.title(titles[c])
         array_pvals = np.ones((cpd.shape[0], cpd.shape[1])) # store where significant at .05 or .001
         for pred in range(cpd.shape[1]):  # loop through pred

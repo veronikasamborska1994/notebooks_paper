@@ -613,20 +613,16 @@ def plot_policy_during_training(experiment):
     _1_back_rew_ch = choices_X_reward[:,:,0]; _other_back_rew_ch = np.mean(choices_X_reward[:,:,1:],2)
         
     n_tasks = 10; n_subj = 9
-    subject_id = np.tile(np.arange(n_subj), n_tasks)
-    fraction_id = np.zeros(n_subj*n_tasks)
-    k = 0 
-    for n in range(10):
-        fraction_id[n*n_subj:n*n_subj+n_subj] = k # fraction in training for later ANOVAs
-        k+=1
-    
+    subject_id = np.repeat(np.arange(n_subj), n_tasks)
+    fraction_id = np.tile(np.arange(n_tasks), n_subj)
+
     coef_to_test = [_1_back_ch,_other_back_ch,_1_back_rew_ch, _other_back_rew_ch]
     coef_names = ['Previous Choice:','History of Choices:', 'Previous Outcome x Choice:','History of Outcomes x Choices:']
-     
+
     # caculate ANOVAs for each of the coefficients
     p_vals_list = []
     for c, coef in enumerate(coef_to_test):
-        coef = np.concatenate(coef.T,0)
+        coef = coef.flatten()
         coef = {'Data':coef,'Sub_id': subject_id,'cond': fraction_id}
         coef = pd.DataFrame.from_dict(data = coef)
         aovrm = AnovaRM(coef, depvar = 'Data',subject = 'Sub_id', within=['cond'])

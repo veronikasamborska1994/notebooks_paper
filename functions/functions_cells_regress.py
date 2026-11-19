@@ -202,7 +202,7 @@ def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
             )
             diff_perm = np.stack(results, 0)
     p_95 = np.percentile(diff_perm,95, axis = 0) # find 95th percentile
-    p_99 = np.percentile(diff_perm,99, axis = 0) # find 99th percentile
+    p_99 = np.percentile(diff_perm,99.9, axis = 0) # find 99.9th percentile (P < 0.001)
     real_diff = np.abs(np.mean(cpd_PFC,0) - np.mean(cpd_HP,0))
     return p_95, p_99, real_diff
     
@@ -292,7 +292,7 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
         cpd = cpds[region][:,:-1] # select all cpds except constant
         cpd_perm = cpds_perms[region][:,:,:,:-1]
         values_95 = np.max(np.percentile(np.mean(cpd_perm,1),95,0),0) # 95th percentile corrected for multiple tests
-        values_99 = np.max(np.percentile(np.mean(cpd_perm,1),99,0),0)  # 99th percentile corrected for multiple tests
+        values_99 = np.max(np.percentile(np.mean(cpd_perm,1),99.9,0),0)  # 99.9th percentile corrected for multiple tests (P < 0.001)
         array_pvals = np.ones((cpd.shape[0],cpd.shape[1]))
         for pred in range(cpd.shape[1]): # loop through pred
             array_pvals[(np.where(cpd[:,pred] > values_95[pred])[0]),pred] = 0.05 # indicate where significant at 0.05 for each region (loop)
