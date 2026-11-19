@@ -592,10 +592,11 @@ def plot_diagonal_sums(HP, PFC,c_1 = 1, perm_n = 2, dlc = False, animal_perm = F
     str_title = ['Policy on A difference between CA1 and PFC', 'Policy on B difference between CA1 and PFC']
     for d, diff in enumerate(diffs):
         plt.subplot(1,2,d+1)
-        plt.hist(diff, color = 'grey', alpha = 0.5)
-        plt.vlines(real[d],ymin = 0, ymax = max(np.histogram(diff)[0]),  color = 'pink')
-        plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]))
+        plt.hist(diff, color = 'grey', alpha = 0.5, label = 'Null distribution')
+        plt.vlines(real[d],ymin = 0, ymax = max(np.histogram(diff)[0]),  color = 'pink', label = 'Observed difference')
+        plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]), color = 'black', label = '95th percentile')
         plt.xlabel('Permuted Differences'); plt.ylabel('Count')
+        plt.legend(fontsize = 7)
         plt.title(str_title[d])
         sns.despine()
     plt.tight_layout()
