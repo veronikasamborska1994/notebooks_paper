@@ -372,7 +372,7 @@ def permute(PFC, HP, diagonal = False, perm = 2, axis = 0, inds = np.arange(13,5
                 u_v_area.append(trp)
             u_v_area_shuffle.append(u_v_area)
     else:
-        _njobs = -1 if perm > 20 else 1
+        _njobs = 4 if perm > 20 else 1
         u_v_area_shuffle = Parallel(n_jobs=_njobs)(
             delayed(_one_perm_svd)(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds)
             for _ in range(perm)

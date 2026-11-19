@@ -195,7 +195,7 @@ def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
                 diff_perm[p,:] = abs(np.mean(cpd_PFC_perm,0) - np.mean(cpd_HP_perm,0))
         else:
             n_HP_sessions = len(HP['DM'][0])
-            _njobs = -1 if perm > 20 else 1
+            _njobs = 4 if perm > 20 else 1
             results = Parallel(n_jobs=_njobs)(
                 delayed(_one_perm_glm)(all_subjects_DM, all_subjects_fr, n_HP_sessions)
                 for _ in range(perm)
