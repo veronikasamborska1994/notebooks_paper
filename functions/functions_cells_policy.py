@@ -335,10 +335,8 @@ def permute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, anim
     n is the number of trials in the past that the history of choices is used for
     policy calculations; default is 11 based on significance testing after training
     perm_n is the number of permutation to run.'''
-    if dlc == False:
-        time_ind = [25, 36, 43]
-    else:
-        time_ind = [26, 39, 46]
+    # Use same event anchors as the real data computation
+    time_ind = TIME_INDICES if not dlc else TIME_INDICES_DLC
 
     all_subjects = np.hstack([PFC['DM'][0], HP['DM'][0]])
     all_subjects_firing = np.hstack([PFC['Data'][0], HP['Data'][0]])
