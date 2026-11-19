@@ -36,7 +36,7 @@ def session_plot_moving_average(session):
     outcome = session.trial_data['outcomes']; state = session.trial_data['state'];  forced_trials = session.trial_data['forced_trial']
     forced_array = np.where(forced_trials == 1)[0]; forced_trials_sum = sum(forced_trials)
 
-    # exclude without forced trials 
+    # exclude forced trials
     choices = np.delete(choices, forced_array); block = np.delete(block, forced_array)
     n_trials = n_trials - forced_trials_sum; outcome =  np.delete(outcome, forced_array);  state =  np.delete(state, forced_array)
     exp_average = exp_mov_ave(choices, initValue = 0.5,tau = 8) # calculate moving average for choosing A choice
@@ -116,7 +116,7 @@ def trials_till_reversal_plot(experiment):
                         if i == 0: # first element in the threshold_crossing_trials_list 
                             reversal_to_threshold[n_subj, task_number-1, reversal_number] = crossing_trial+trials_from_prev_session
                             trials_from_prev_session = 0
-                        elif i > 0: # for other than the first thershold in the session calculate the number of trials since block change
+                        elif i > 0: # for other than the first threshold in the session calculate the number of trials since block change
                             reversal_to_threshold[n_subj, task_number-1, reversal_number] = (crossing_trial-reversal_trials[i-1])
                         reversal_number += 1   
             
@@ -165,7 +165,7 @@ def trials_till_reversal_plot(experiment):
     plt.ylabel("Number of Trials Till Threshold")
     plt.xticks(np.arange(10),np.arange(10)+1)
     
-    # plot all reversals across all tasks averaged aross subjects 
+    # plot all reversals across all tasks averaged across subjects
     x = np.arange(reversals)
     std_proportion = np.std(reversal_to_threshold, axis = 0)
     std_err = std_proportion/sample_size
@@ -469,22 +469,20 @@ def out_of_sequence(experiment, first_task_only=False):
     lasttH_std = lasttH_std/np.sqrt(n_subjects)
     
     plt.figure(figsize=(5,5))      
-    popt_exponential, pcov_exponential = fit(exponential, x, firstH, p0 = [1, 0, 0.5], maxfev = 100000)
+    popt_exponential, _ = fit(exponential, x, firstH, p0 = [1, 0, 0.5], maxfev = 100000)
     a, k, b = popt_exponential; y2 = exponential(x, a, k, b);   # test result
     plt.plot(x, y2, color='black')
 
     mice_first = np.mean(bad_pokes[:,:5,:],1)
-    k = 0
     for i in mice_first:
         plt.scatter(np.arange(len(i)),i, color = 'black')
         sns.despine()
     
-    popt_exponential_l, pcov_exponential_l = fit(exponential, x, lasttH, p0 = [0, -1, 0.3], maxfev = 100000)
+    popt_exponential_l, _ = fit(exponential, x, lasttH, p0 = [0, -1, 0.3], maxfev = 100000)
     a, k, b = popt_exponential_l; y2_l = exponential(x, a, k, b)  # test result
     
     plt.plot(x, y2_l, color='pink')
     mice_last = np.mean(bad_pokes[:,5:,:],1)
-    k = 0
     for i in mice_last:
         plt.scatter(np.arange(len(i)),i, color = 'pink')
         sns.despine()

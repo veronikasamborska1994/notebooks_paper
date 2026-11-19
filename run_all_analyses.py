@@ -197,12 +197,12 @@ steps = [
 
     ("Ext Fig 5B | RSA (animal perms)",
      "ext5b_rsa_animal",
-     lambda: rsas.RSA_across_time_plot(HP, PFC, perm_n=True, animal_perm=True, dlc=False)),
+     lambda: rsas.RSA_across_time_plot(HP, PFC, perm_n=PERMS, animal_perm=True, dlc=False)),
 
     ("Ext Fig 5C-D | Policy (animal perms)",
      "ext5cd_policy_animal",
-     lambda: (pol.plot_correlations_slice(PFC, HP, n=11, c_1=1, perm_n=False, dlc=False, animal_perm=True),
-              pol.plot_diagonal_sums(HP, PFC, c_1=1, perm_n=True, dlc=False, animal_perm=True))),
+     lambda: (pol.plot_correlations_slice(PFC, HP, n=11, c_1=1, perm_n=PERMS, dlc=False, animal_perm=True),
+              pol.plot_diagonal_sums(HP, PFC, c_1=1, perm_n=PERMS, dlc=False, animal_perm=True))),
 
     ("Ext Fig 7C-G | RSA + Policy (DLC residuals)",
      "ext7_dlc",
@@ -229,7 +229,7 @@ steps = [
 
     ("Ext Fig 9D | SVD animal perms",
      "ext9d_svd_animal",
-     lambda: SVD.plot_supplementary(HP, PFC, inds=np.arange(24, 35), animal_perm=True, n_perms=False)),
+     lambda: SVD.plot_supplementary(HP, PFC, inds=np.arange(24, 35), animal_perm=True, n_perms=PERMS)),
 ]
 
 # ---------------------------------------------------------------------------
