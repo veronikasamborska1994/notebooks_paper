@@ -24,6 +24,11 @@ XTICK_LABELS = ['-1', '-0.5', 'Init', 'Ch', 'R', '+0.5', '+1']
 TIME_INDICES = [24, 35, 42]       # init, choice, outcome
 TIME_INDICES_DLC = [25, 38, 45]
 
+# NOTE: DLC tick positions vary by function due to different trial lengths.
+# Some functions (plot_policy_simple_GLM, plot_diagonal_sums) use 63 as the
+# last DLC tick instead of 64. Do NOT blindly apply XTICK_POSITIONS_DLC
+# everywhere — check the original values in each function.
+
 
 def animal_exp_permute(all_sessions_HP, all_sessions_PFC):
     """Split HP and PFC session data by animal for permutation testing.
