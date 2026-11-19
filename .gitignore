@@ -3,5 +3,6 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 figures/
+figures_review/
 figures_test_*/
 .DS_Store

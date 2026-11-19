@@ -293,7 +293,7 @@ def svd_between_brains(HP,PFC, inds = np.arange(13,51)):
     sum_c_task_1_2_HP = np.cumsum(abs(s_1_2_HP))/n_neurons_HP #normalise by number of neurons
     
     # Project task 2 first half onto modes from task 2 second half (otherwise same logic)  using PFC vectors
-    s_task_2_1_from_t_2_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_HP, t_v_t_1_2_PFC])    
+    s_task_2_1_from_t_2_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_HP, t_v_t_2_2_PFC])
     s_2_1_from_t_2_2_HP = np.sum(s_task_2_1_from_t_2_2_HP**2, axis = axis)
     sum_c_task_2_1_from_t_2_2_HP = np.cumsum(abs(s_2_1_from_t_2_2_HP))/n_neurons_HP
     
@@ -321,7 +321,7 @@ def svd_between_brains(HP,PFC, inds = np.arange(13,51)):
     sum_c_task_1_2_PFC = np.cumsum(abs(s_1_2_PFC))/n_neurons_PFC #normalise by number of neurons
     
     # Project task 2 first half onto modes from task 2 second half (otherwise same logic)  using HP vectors
-    s_task_2_1_from_t_2_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_PFC, t_v_t_1_2_HP])    
+    s_task_2_1_from_t_2_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_PFC, t_v_t_2_2_HP])
     s_2_1_from_t_2_2_PFC = np.sum(s_task_2_1_from_t_2_2_PFC**2, axis = axis)
     sum_c_task_2_1_from_t_2_2_PFC = np.cumsum(abs(s_2_1_from_t_2_2_PFC))/n_neurons_PFC
     

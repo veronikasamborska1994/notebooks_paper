@@ -334,7 +334,7 @@ def _one_perm_policy_A_B(all_subjects, all_subjects_firing, n_pfc_sessions, n, c
                                  c_1, time_ind)
 
 
-def perumute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, animal_perm = False):
+def permute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, animal_perm = False):
     ''' This function permutes sessions between HP and PFC groups and finds correlation slices through time
     of coefficients at initiation, choice and outcome times.
     c_1 is an argument to select policy coefficients (1)
@@ -440,7 +440,7 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
         task_mean_A_B.append([np.mean(coefs_tasks[:3],0),np.mean(coefs_tasks[3:6],0), np.mean(coefs_tasks[6:9],0),np.mean(coefs_tasks[9:12],0),np.mean(coefs_tasks[12:15],0), np.mean(coefs_tasks[15:18],0)])
     
     # find permuted differences
-    diff_PFC_HP_perm, PFC_HP_perm = perumute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
+    diff_PFC_HP_perm, PFC_HP_perm = permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
     diff_PFC_HP_perm = np.asarray(diff_PFC_HP_perm);  PFC_HP_perm  = np.asarray(PFC_HP_perm); task_mean_A_B = np.asarray(task_mean_A_B)
     _95th = np.percentile(diff_PFC_HP_perm, 95,0) # .05 difference in CA1 and PFC B - A choice policy
     
