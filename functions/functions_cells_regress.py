@@ -272,7 +272,7 @@ def GLM_roll_time(data, perm = 1000):
     return cpd,cpd_perm
 
 def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False): 
-    ''' Plotting CPDs and significance levels, Figure 3B)'''
+    '''Plotting CPDs and significance levels (Figure 4B).'''
     cpd_HP, cpd_perm_HP =  GLM_roll_time(HP, perm = n_perm)
     cpd_PFC, cpd_perm_PFC =  GLM_roll_time(PFC, perm = n_perm)
     p_95, p_99, real_diff = GLM_perm_across_regions(HP, PFC, perm = n_perm,  animal_perm = animal_perm)

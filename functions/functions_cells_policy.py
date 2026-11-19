@@ -45,8 +45,8 @@ def _batch_corrcoef(X, y):
 
 
 def plot_policy_during_recordings(PFC, HP, n = 12): 
-    ''''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions, Figure 5A '''
+    '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
+    outcomes (not shown) and choice-outcome interactions, Figure 5A.'''
     
     # sessions to split by animals
     HP_1 = 15; HP_2 = 7  
@@ -85,7 +85,7 @@ def plot_policy_during_recordings(PFC, HP, n = 12):
     plt.figure(figsize = (8,4)); c = wes.Royal2_5.mpl_colors
     plt.subplot(1,2,1)
     plt.plot(np.arange(len(average_coefs))[n:n*2], average_coefs[n:n*2], color = c[2])
-    plt.fill_between(np.arange(len(average_coefs))[n:n*2], average_coefs[n:n*2]+std[n*2:-1], average_coefs[n:n*2]- std[n:n*2],alpha = 0.2, color =c[2])
+    plt.fill_between(np.arange(len(average_coefs))[n:n*2], average_coefs[n:n*2]+std[n:n*2], average_coefs[n:n*2]- std[n:n*2],alpha = 0.2, color =c[2])
     plt.hlines(0, xmin = np.arange(len(average_coefs))[n:n*2][0],xmax = np.arange(len(average_coefs))[n:n*2][-1])
     length = len(np.arange(len(average_coefs))[n:n*2])
     plt.xticks(np.arange(len(average_coefs))[n:n*2],np.arange(length)+1)
@@ -182,8 +182,8 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     
 
 def policy_for_GLM(data, n, perm = False):
-    ''''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions to use for policy calculations for PFC and CA1 animals in GLM on Figure 5A '''
+    '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
+    outcomes (not shown) and choice-outcome interactions to use for policy calculations for PFC and CA1 animals in GLM on Figure 5A.'''
     if perm:
         dm = data[0]
     else:
@@ -273,7 +273,7 @@ def policy_A_B(data, n = 10, perm = True):
 def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_HP_b,
                           C_1_PFC_a, C_2_PFC_a, C_3_PFC_a, C_1_PFC_b, C_2_PFC_b, C_3_PFC_b,
                           c_1, time_ind):
-    '''Shared inner computation for perumute_policy_A_B: given policy coefficients for HP and PFC
+    '''Shared inner computation for permute_policy_A_B: given policy coefficients for HP and PFC
     on A and B choices across three tasks, compute cross-task correlation slices and return the
     permuted difference and PFC-HP difference arrays.'''
     init_t = time_ind[0]; ch_t = time_ind[1]; r_t = time_ind[2]
@@ -321,7 +321,7 @@ def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_H
 
 
 def _one_perm_policy_A_B(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind):
-    '''Single permutation iteration for perumute_policy_A_B (session-shuffle branch).'''
+    '''Single permutation iteration for permute_policy_A_B (session-shuffle branch).'''
     sessions_n = np.arange(len(all_subjects))
     np.random.shuffle(sessions_n)
     indices_PFC = sessions_n[:n_pfc_sessions]; indices_HP = sessions_n[n_pfc_sessions:]
