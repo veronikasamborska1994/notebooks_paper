@@ -1,20 +1,88 @@
+# Complementary task representations in hippocampus and prefrontal cortex for generalizing the structure of problems
 
-# Code for generating plots in "Complementary task representations in hippocampus and prefrontal cortex for generalizing the structure of problems.(2022) Nature Neuroscience" 
+Code for reproducing all figures in [Samborska, Butler, Walton, Behrens & Akam (2022) *Nature Neuroscience*](https://doi.org/10.1038/s41593-022-01149-8).
 
-> This repository contains Jupyter Notebooks and .py code for replicating figures in our paper. Behavioural and neural data needs to be downloaded from [here](https://doi.org/10.6084/m9.figshare.19773334) 
+## Data
 
-## Installation
+Download behavioural and neural data from [figshare](https://doi.org/10.6084/m9.figshare.19773334) and place it in a local folder.
 
-![](media/installation_glance.png)
+## Setup
 
-## Summary
+```bash
+git clone <repo-url>
+cd notebooks_paper
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-After downloading the data, cloning the github repository and installing a few basic python packages in the requirements.txt file (above) you should be able to easily run all of the code in Jupyter Notebook
+Requires Python >= 3.9.
 
-**behaviour.ipynb** will plot all the figures that relate to behavioural results in our paper (both in main and extended Data)
+## Running the analyses
 
-**cells - main figures.ipynb** will plot all the **main figures** that relate to neural results in our paper 
+### Option 1: Standalone script (recommended)
 
-**cells - extended data.ipynb** will plot all the **extended data figures** that relate to neural results in our paper 
- 
-![](media/notebook.gif)
+Runs all 29 analysis steps and saves figures as SVG + PNG:
+
+```bash
+python run_all_analyses.py --data-path /path/to/data_share/ --perms 5000 --output-dir figures
+```
+
+Use `--perms 5` or `--perms 100` for a quick check. The paper used 5000 permutations.
+
+### Option 2: Jupyter notebooks
+
+Open the notebooks in Jupyter or VS Code and update the data path in the first cell.
+
+| Notebook | Contents |
+|----------|----------|
+| `behaviour.ipynb` | Behavioural results — main (Fig 1) and extended data (Ext Fig 1–2) |
+| `cells - main figures.ipynb` | Neural results — main figures (Fig 2, 4–6) |
+| `cells - extended data.ipynb` | Neural results — extended data (Ext Fig 4–5, 7–9) |
+
+## Repository structure
+
+```
+├── run_all_analyses.py          # Standalone script to run all analyses
+├── behaviour.ipynb              # Behavioural analysis notebook
+├── cells - main figures.ipynb   # Neural main figures notebook
+├── cells - extended data.ipynb  # Neural extended data notebook
+├── functions/
+│   ├── helper_functions.py      # Shared utilities (CPD, EMA, task IDs, animal permutations)
+│   ├── RSAs.py                  # Representational dissimilarity matrices
+│   ├── data_import.py           # Import training behavioural data (pyControl)
+│   ├── data_import_ephys.py     # Import recording behavioural data (pyControl)
+│   ├── functions_behaviour.py   # Behavioural analyses for training (Fig 1)
+│   ├── functions_behaviour_rec.py # Behavioural analyses during recordings (Ext Fig 1–2)
+│   ├── functions_cells_regress.py # GLM regression / CPD analysis (Fig 4B)
+│   ├── functions_cells_rsa.py   # RSA across time (Fig 4C–E)
+│   ├── functions_cells_decode.py # SVM decoding across tasks (Fig 4F–G)
+│   ├── functions_cells_svd.py   # SVD population pattern analysis (Fig 5)
+│   ├── functions_cells_policy.py # Neural correlates of behavioural policy (Fig 6)
+│   ├── functions_cells_ext.py   # Extended data neural analyses (Ext Fig 4, 8)
+│   └── plot_neurons.py          # Single neuron visualisation (Fig 2)
+├── tests/
+│   └── test_validation.py       # Validation tests for core functions
+└── requirements.txt
+```
+
+## Statistical tests
+
+Permutation tests shuffle sessions between brain regions (HP vs PFC) to test for regional differences. Two types:
+- **Session shuffle**: randomly reassign sessions to regions, preserving animal structure
+- **Animal shuffle**: enumerate all possible splits of 7 animals into HP-sized (3) and PFC-sized (4) groups
+
+The `--perms` argument (or `perms` variable in notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits.
+
+## Citation
+
+```bibtex
+@article{samborska2022complementary,
+  title={Complementary task representations in hippocampus and prefrontal cortex for generalizing the structure of problems},
+  author={Samborska, Veronika and Butler, James L and Walton, Mark E and Behrens, Timothy EJ and Akam, Thomas},
+  journal={Nature Neuroscience},
+  volume={25},
+  pages={1382--1392},
+  year={2022}
+}
+```

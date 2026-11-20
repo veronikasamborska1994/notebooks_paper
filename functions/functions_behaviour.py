@@ -1,3 +1,14 @@
+"""Behavioural analysis functions for training data.
+
+Analyses include:
+- session_plot_moving_average: plot exponential moving average of choices within a session
+- trials_till_reversal_plot: number of trials to reach criterion at each reversal
+- meta_learning_reversals: learning curves aligned to reversals across training
+- out_of_sequence: analysis of out-of-sequence poke errors
+- policy_training: logistic regression of choice history predicting current choices
+- plot_policy_during_training: plot policy regression coefficients with ANOVA stats
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -12,14 +23,20 @@ from functions.helper_functions import exp_mov_ave
 from functions.helper_functions import exponential
 
 def session_plot_moving_average(session):
-    '''Plot reward probabilities and moving average of choices for a single session, Figure 1D'''
+    """Plot choices, outcomes, state, and exponential moving average for one session (Fig 1D).
+
+    Parameters
+    ----------
+    session : Session
+        A single training session object from data_import.
+    """
     
     # extract trial data (choices, rewards, states)
     block = session.trial_data['block']; choices = session.trial_data['choices']; n_trials = session.trial_data['n_trials']
     outcome = session.trial_data['outcomes']; state = session.trial_data['state'];  forced_trials = session.trial_data['forced_trial']
     forced_array = np.where(forced_trials == 1)[0]; forced_trials_sum = sum(forced_trials)
 
-    # exclude without forced trials 
+    # exclude forced trials
     choices = np.delete(choices, forced_array); block = np.delete(block, forced_array)
     n_trials = n_trials - forced_trials_sum; outcome =  np.delete(outcome, forced_array);  state =  np.delete(state, forced_array)
     exp_average = exp_mov_ave(choices, initValue = 0.5,tau = 8) # calculate moving average for choosing A choice
@@ -47,7 +64,17 @@ def session_plot_moving_average(session):
     
 
 def trials_till_reversal_plot(experiment):
-    '''Plot number of trials taken to reach a threshold for a reversal across tasks, Figure 1E'''
+    """Plot trials to reversal threshold across tasks and reversals (Fig 1E, Ext Fig 1A).
+
+    Computes the number of trials after each reversal needed to reach the
+    performance threshold that triggers the next reversal. Runs a 2-way
+    repeated-measures ANOVA (problem x reversal) and prints the results.
+
+    Parameters
+    ----------
+    experiment : Experiment
+        Training experiment object containing all subjects' sessions.
+    """
     
     tasks = 10;  reversals = 10; subject_IDs = experiment.subject_IDs; n_subjects = len(subject_IDs)  
     reversal_to_threshold = np.ones(shape=(n_subjects,tasks,reversals)) # subject, task number, reversal number
@@ -89,7 +116,7 @@ def trials_till_reversal_plot(experiment):
                         if i == 0: # first element in the threshold_crossing_trials_list 
                             reversal_to_threshold[n_subj, task_number-1, reversal_number] = crossing_trial+trials_from_prev_session
                             trials_from_prev_session = 0
-                        elif i > 0: # for other than the first thershold in the session calculate the number of trials since block change
+                        elif i > 0: # for other than the first threshold in the session calculate the number of trials since block change
                             reversal_to_threshold[n_subj, task_number-1, reversal_number] = (crossing_trial-reversal_trials[i-1])
                         reversal_number += 1   
             
@@ -110,8 +137,8 @@ def trials_till_reversal_plot(experiment):
     res = aovrm.fit()
      
     # print stats
-    print('Problem:' + ' '+ 'df = '+ ' '+ str(np.int(res.anova_table['Num DF'][0])) + ', ' + str(np.int(res.anova_table['Den DF'][0])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'][0],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'][0], 3)));
-    print('Reversal:' + ' '+ 'df = '+ ' '+ str(np.int(res.anova_table['Num DF'][1])) + ', ' + str(np.int(res.anova_table['Den DF'][1])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'][1],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'][1], 3)));
+    print('Problem:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[0])) + ', ' + str(int(res.anova_table['Den DF'].iloc[0])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'].iloc[0],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'].iloc[0], 3)));
+    print('Reversal:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[1])) + ', ' + str(int(res.anova_table['Den DF'].iloc[1])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'].iloc[1],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'].iloc[1], 3)));
    
     # Plot individual subjects
     mean_thre_subj = np.mean(reversal_to_threshold,axis = 2) 
@@ -138,7 +165,7 @@ def trials_till_reversal_plot(experiment):
     plt.ylabel("Number of Trials Till Threshold")
     plt.xticks(np.arange(10),np.arange(10)+1)
     
-    # plot all reversals across all tasks averaged aross subjects 
+    # plot all reversals across all tasks averaged across subjects
     x = np.arange(reversals)
     std_proportion = np.std(reversal_to_threshold, axis = 0)
     std_err = std_proportion/sample_size
@@ -154,9 +181,17 @@ def trials_till_reversal_plot(experiment):
     
     
 def meta_learning_reversals(experiment):
-    '''Plot Probability of choosing the new best option 
-       (the choice that becomes good after the reversal on the last/first n (tr) trials around the reversal)
-       split by the first problem and the last problem, Figure 1F'''
+    """Plot learning curves around reversals for early vs late training (Fig 1F).
+
+    Compares the probability of choosing the new best option around
+    reversals in early vs late training. Tests whether post-reversal
+    slopes differ between early and late training (paired t-test).
+
+    Parameters
+    ----------
+    experiment : Experiment
+        Training experiment object containing all subjects' sessions.
+    """
     
     # number of trials before and after switch
     tr = 10; subject_IDs = experiment.subject_IDs;  n_subjects = len(subject_IDs)  
@@ -235,12 +270,20 @@ def meta_learning_reversals(experiment):
     plt.legend()
     sns.despine()
 
-def out_of_sequence(experiment, first_task_only = False):
-    '''Plot pokes per trial to a choice port that is no longer available because
-    the subject had already chosen the other port, as a function of problem number, Figure 1E;
-    
-    Plot number of pokes per trial to a choice port that was no longer available as a function of reversal number
-    on the first 5 problems and the last 5 problems during training, Figure 1H '''
+def out_of_sequence(experiment, first_task_only=False):
+    """Plot out-of-sequence poke errors across training (Fig 1G-H, Ext Fig 1B).
+
+    Counts pokes to a choice port after the animal already chose the other
+    port on that trial. These "out-of-sequence" errors decrease as animals
+    learn the task structure.
+
+    Parameters
+    ----------
+    experiment : Experiment
+        Training experiment object.
+    first_task_only : bool
+        If True, exclude data from the first task (problem 1).
+    """
    
     tasks = 10; reversals = 10; subject_IDs = experiment.subject_IDs; n_subjects = len(subject_IDs)  
     bad_pokes = np.zeros([n_subjects,tasks,reversals])  # subject, task number, reversal number
@@ -340,8 +383,8 @@ def out_of_sequence(experiment, first_task_only = False):
     res = aovrm.fit()
      
      # print stats
-    print('Problem:' + ' '+ 'df = '+ ' '+ str(np.int(res.anova_table['Num DF'][0])) + ', ' + str(np.int(res.anova_table['Den DF'][0])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'][0],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'][0], 3)));
-    print('Reversal:' + ' '+ 'df = '+ ' '+ str(np.int(res.anova_table['Num DF'][1])) + ', ' + str(np.int(res.anova_table['Den DF'][1])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'][1],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'][1], 3)));
+    print('Problem:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[0])) + ', ' + str(int(res.anova_table['Den DF'].iloc[0])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'].iloc[0],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'].iloc[0], 3)));
+    print('Reversal:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[1])) + ', ' + str(int(res.anova_table['Den DF'].iloc[1])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'].iloc[1],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'].iloc[1], 3)));
     
     if first_task_only: 
         bad_pokes = bad_pokes[:,1:,:]
@@ -358,8 +401,8 @@ def out_of_sequence(experiment, first_task_only = False):
         res = aovrm.fit()
 
         # print stats
-        print('Problem excluding 1st task:' + ' '+ 'df = '+ ' '+ str(np.int(res.anova_table['Num DF'][0])) + ', ' + str(np.int(res.anova_table['Den DF'][0])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'][0],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'][0], 3)));
-        print('Reversal excluding 1st task:' + ' '+ 'df = '+ ' '+ str(np.int(res.anova_table['Num DF'][1])) + ', ' + str(np.int(res.anova_table['Den DF'][1])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'][1],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'][1], 3)));
+        print('Problem excluding 1st task:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[0])) + ', ' + str(int(res.anova_table['Den DF'].iloc[0])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'].iloc[0],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'].iloc[0], 3)));
+        print('Reversal excluding 1st task:' + ' '+ 'df = '+ ' '+ str(int(res.anova_table['Num DF'].iloc[1])) + ', ' + str(int(res.anova_table['Den DF'].iloc[1])), 'F' + ' = ' + str(np.round(res.anova_table['F Value'].iloc[1],3)),'p' + ' = ' + str(np.round(res.anova_table['Pr > F'].iloc[1], 3)));
        
     # plot individual subjects across tasks 
     mean_bad_pokes_rev = np.mean(bad_pokes,axis = 2)
@@ -426,22 +469,20 @@ def out_of_sequence(experiment, first_task_only = False):
     lasttH_std = lasttH_std/np.sqrt(n_subjects)
     
     plt.figure(figsize=(5,5))      
-    popt_exponential, pcov_exponential = fit(exponential, x, firstH, p0 = [1, 0, 0.5], maxfev = 100000)
+    popt_exponential, _ = fit(exponential, x, firstH, p0 = [1, 0, 0.5], maxfev = 100000)
     a, k, b = popt_exponential; y2 = exponential(x, a, k, b);   # test result
     plt.plot(x, y2, color='black')
 
     mice_first = np.mean(bad_pokes[:,:5,:],1)
-    k = 0
     for i in mice_first:
         plt.scatter(np.arange(len(i)),i, color = 'black')
         sns.despine()
     
-    popt_exponential_l, pcov_exponential_l = fit(exponential, x, lasttH, p0 = [0, -1, 0.3], maxfev = 100000)
+    popt_exponential_l, _ = fit(exponential, x, lasttH, p0 = [0, -1, 0.3], maxfev = 100000)
     a, k, b = popt_exponential_l; y2_l = exponential(x, a, k, b)  # test result
     
     plt.plot(x, y2_l, color='pink')
     mice_last = np.mean(bad_pokes[:,5:,:],1)
-    k = 0
     for i in mice_last:
         plt.scatter(np.arange(len(i)),i, color = 'pink')
         sns.despine()
@@ -454,9 +495,25 @@ def out_of_sequence(experiment, first_task_only = False):
     
    
 
-def policy_training(experiment, subject_IDs ='all'):  
-    '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions, Figure 1I, 1J '''
+def policy_training(experiment, subject_IDs='all'):
+    """Fit logistic regression of choice history predicting current choices (Fig 1I-J).
+
+    For each session, fits a logistic regression with n-back choices, rewards,
+    and choice x reward interactions as predictors. Coefficients are averaged
+    within each problem (task configuration) and returned per subject.
+
+    Parameters
+    ----------
+    experiment : Experiment
+        Training experiment object.
+    subject_IDs : str or list
+        Which subjects to include. Default 'all'.
+
+    Returns
+    -------
+    coef_subj : list of arrays
+        Regression coefficients per subject, shape (n_tasks, 3*n + 1).
+    """
     
     n = 11 # this number was selected based on significance testing after training 
     subject_IDs = experiment.subject_IDs; n_subjects = len(subject_IDs); coef_subj = [] # list to store regression coefficients
@@ -534,9 +591,18 @@ def policy_training(experiment, subject_IDs ='all'):
 
        
    
-def plot_policy_during_training(experiment):  
-    '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions, Figure 1I, 1J '''
+def plot_policy_during_training(experiment):
+    """Plot policy coefficients across training with repeated-measures ANOVA (Fig 1I-J).
+
+    Calls policy_training() to get logistic regression coefficients, then
+    tests whether lag-1 and averaged higher-lag coefficients for choices
+    and choice x reward interactions change across problems (RM-ANOVA).
+
+    Parameters
+    ----------
+    experiment : Experiment
+        Training experiment object.
+    """
     
     n = 11 # this number was selected based on significance testing after training 
     coef_subj =  policy_training(experiment, subject_IDs ='all')
@@ -548,26 +614,22 @@ def plot_policy_during_training(experiment):
         
     n_tasks = 10; n_subj = 9
     subject_id = np.repeat(np.arange(n_subj), n_tasks)
-    fraction_id = np.zeros(n_subj*n_tasks)
-    k = 0 
-    for n in range(10):
-        fraction_id[n*n_subj:n*n_subj+n_subj] = k # fraction in training for later ANOVAs
-        k+=1
-    
+    fraction_id = np.tile(np.arange(n_tasks), n_subj)
+
     coef_to_test = [_1_back_ch,_other_back_ch,_1_back_rew_ch, _other_back_rew_ch]
     coef_names = ['Previous Choice:','History of Choices:', 'Previous Outcome x Choice:','History of Outcomes x Choices:']
-     
+
     # caculate ANOVAs for each of the coefficients
     p_vals_list = []
     for c, coef in enumerate(coef_to_test):
-        coef = np.concatenate(coef.T,0)
+        coef = coef.flatten()
         coef = {'Data':coef,'Sub_id': subject_id,'cond': fraction_id}
         coef = pd.DataFrame.from_dict(data = coef)
         aovrm = AnovaRM(coef, depvar = 'Data',subject = 'Sub_id', within=['cond'])
         res = aovrm.fit()
         coef = res.anova_table
-        p_val = np.round(res.anova_table['Pr > F'][0],2)
-        print(coef_names[c] + ' '+ 'df = '+ ' '+ str(res.anova_table['Num DF'][0]) + ' ' + str(res.anova_table['Den DF'][0]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'][0],3)),'p = ' + ' '+ str(np.round(res.anova_table['Pr > F'][0],3)));
+        p_val = np.round(res.anova_table['Pr > F'].iloc[0],2)
+        print(coef_names[c] + ' '+ 'df = '+ ' '+ str(res.anova_table['Num DF'].iloc[0]) + ' ' + str(res.anova_table['Den DF'].iloc[0]), 'F = ' + ' ' + str(np.round(res.anova_table['F Value'].iloc[0],3)),'p = ' + ' '+ str(np.round(res.anova_table['Pr > F'].iloc[0],3)));
         p_vals_list.append(p_val) 
 
        

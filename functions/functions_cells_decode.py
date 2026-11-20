@@ -1,3 +1,16 @@
+"""SVM decoding of trial states across task layouts (Figure 4F-G).
+
+Trains a linear SVM to classify trial position (initiation, A/B choice,
+A/B reward, A/B no-reward) using neural population activity from one task
+layout, then tests cross-task generalisation on a different layout.
+Animal-shuffle permutation tests compare HP vs PFC.
+
+Key functions:
+- decoder_trial_states: train/test SVM decoder for one task pair
+- permute_subjects: run all animal permutations
+- plot: main plotting function
+"""
+
 import numpy as np
 from sklearn import svm
 from sklearn import metrics
@@ -7,7 +20,7 @@ from itertools import combinations
 import pandas as pd
 import palettable 
 from scipy import io
-from functions.helper_functions import task_ind
+from functions.helper_functions import task_ind, animal_exp_permute, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL
 
 def import_cell_data(path):
     
@@ -15,7 +28,7 @@ def import_cell_data(path):
     HP = io.loadmat(path +'/data_recordings/HP.mat')
     PFC = io.loadmat(path + '/data_recordings/PFC.mat')
     
-    'Import neual data after accounting for physical movements.'
+    'Import neural data after accounting for physical movements.'
     HP_dlc = io.loadmat(path +'/data_recordings/after PCA /HP_dlc_pca.mat')
     PFC_dlc = io.loadmat(path + '/data_recordings/after PCA /PFC_dlc_pca.mat')
     
@@ -26,34 +39,21 @@ def decoder_trial_states(data, task_test = 0, H = 0, perm = True, decoder_full =
     '''Simple linear decoding of position in the trial (Initiation, A/B choice/reward/no-reward) 
     using data from one problem, and tested the decoding performance on a different problem (Figure 3F, G).'''
     
-    HP_1 = 15; HP_2 = 7 # sessions to split by animals 
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13
-    
     cnf_matrix_subj_x_y = [] # task x to y confusion matrix
     cnf_matrix_subj_y_x = [] # task y to x confusion matrix
-   
-    if H == 0 and perm == False: # split HP data for each animal
-        HP_all_sessions_1 = data['DM'][0][:HP_1]; HP_all_sessions_2 = data['DM'][0][HP_1:HP_1+HP_2]
-        HP_all_sessions_3 = data['DM'][0][HP_1+HP_2:]
-       
-        HP_all_sessions_1_fr = data['Data'][0][:HP_1]; HP_all_sessions_2_fr = data['Data'][0][HP_1:HP_1+HP_2]
-        HP_all_sessions_3_fr = data['Data'][0][HP_1+HP_2:]
-        
-        all_subjects_dm = [HP_all_sessions_1,HP_all_sessions_2, HP_all_sessions_3]
-        all_subjects_data = [HP_all_sessions_1_fr,HP_all_sessions_2_fr, HP_all_sessions_3_fr]
-        
-    elif H != 0 and perm == False: # split PFC data for each animal
-        PFC_all_sessions_1 = data['DM'][0][:PFC_1]; PFC_all_sessions_2 = data['DM'][0][PFC_1:PFC_1+PFC_2]
-        PFC_all_sessions_3 = data['DM'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3];  PFC_all_sessions_4 = data['DM'][0][PFC_1+PFC_2+PFC_3:]
-        
-        PFC_all_sessions_1_fr = data['Data'][0][:PFC_1]; PFC_all_sessions_2_fr = data['Data'][0][PFC_1:PFC_1+PFC_2]
-        PFC_all_sessions_3_fr = data['Data'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3]; PFC_all_sessions_4_fr = data['Data'][0][PFC_1+PFC_2+PFC_3:]
-        
-        all_subjects_dm = [PFC_all_sessions_1,PFC_all_sessions_2, PFC_all_sessions_3,PFC_all_sessions_4]
-        all_subjects_data = [PFC_all_sessions_1_fr,PFC_all_sessions_2_fr, PFC_all_sessions_3_fr,PFC_all_sessions_4_fr]
-        
-    elif perm == True: # data selection if it's a permutation test
+
+    if perm == True: # data selection if it's a permutation test
         all_subjects_dm = data[0];  all_subjects_data = data[1]
+    else:
+        # Split sessions by animal using shared constants
+        splits = HP_SESSIONS_PER_ANIMAL if H == 0 else PFC_SESSIONS_PER_ANIMAL
+        dm_all = data['DM'][0]; fr_all = data['Data'][0]
+        boundaries = np.cumsum([0] + list(splits))
+        all_subjects_dm = [dm_all[boundaries[i]:boundaries[i+1]] for i in range(len(splits))]
+        all_subjects_data = [fr_all[boundaries[i]:boundaries[i+1]] for i in range(len(splits))]
+        # Last group is the remainder
+        all_subjects_dm.append(dm_all[boundaries[-1]:])
+        all_subjects_data.append(fr_all[boundaries[-1]:])
     
     for ss,subj in enumerate(all_subjects_dm): # loop through subjects
         y = all_subjects_dm[ss]; X = all_subjects_data[ss]
@@ -159,25 +159,29 @@ def decoder_trial_states(data, task_test = 0, H = 0, perm = True, decoder_full =
     
 
 def permute_subjects(HP, PFC):
-    '''' Function to permute subjects and run decoder in all task combinations (Figure 3F, G).'''
-    
-    HP_1 = 15; HP_2 = 7 # # sessions to split by animals 
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13 
-    
-    # organise data for pemuting subjects between groups
-    HP_all_sessions_1 = HP['DM'][0][:HP_1]; HP_all_sessions_2 = HP['DM'][0][HP_1:HP_1+HP_2]; HP_all_sessions_3 = HP['DM'][0][HP_1+HP_2:]
-    
-    PFC_all_sessions_1 = PFC['DM'][0][:PFC_1]; PFC_all_sessions_2 = PFC['DM'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3 = PFC['DM'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3]; PFC_all_sessions_4 = PFC['DM'][0][PFC_1+PFC_2+PFC_3:]
-    
-    HP_all_sessions_1_fr = HP['Data'][0][:HP_1]; HP_all_sessions_2_fr = HP['Data'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3_fr = HP['Data'][0][HP_1+HP_2:]
+    """Permute subjects between regions and run decoder for all task pairs (Fig 4F-G).
 
-    PFC_all_sessions_1_fr = PFC['Data'][0][:PFC_1]; PFC_all_sessions_2_fr = PFC['Data'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3_fr = PFC['Data'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3]; PFC_all_sessions_4_fr = PFC['Data'][0][PFC_1+PFC_2+PFC_3:]
-   
-    all_subjects = [HP_all_sessions_1,HP_all_sessions_2, HP_all_sessions_3,PFC_all_sessions_1,PFC_all_sessions_2, PFC_all_sessions_3,PFC_all_sessions_4]
-    all_subjects_firing = [HP_all_sessions_1_fr,HP_all_sessions_2_fr, HP_all_sessions_3_fr,PFC_all_sessions_1_fr,PFC_all_sessions_2_fr, PFC_all_sessions_3_fr,PFC_all_sessions_4_fr]
+    Enumerates all C(7,3) = 35 ways to split 7 animals into groups of 3 (HP)
+    and 4 (PFC), runs the decoder for each split, and compares against the
+    real HP/PFC assignment.
+
+    Parameters
+    ----------
+    HP, PFC : dict
+        Neural data dicts with keys 'DM' and 'Data'.
+
+    Returns
+    -------
+    perm_all_xy, perm_all_yx : list
+        Permuted confusion matrices for each direction.
+    subj_hp_xy, subj_hp_yx : list
+        Real HP confusion matrices.
+    subj_pfc_xy, subj_pfc_yx : list
+        Real PFC confusion matrices.
+    """
+    
+    # Split sessions by animal using shared helper
+    all_subjects, all_subjects_firing = animal_exp_permute(HP, PFC)
 
     animals_PFC = [0,1,2,3]; animals_HP = [4,5,6]
     m, n = len(animals_PFC), len(animals_HP)
@@ -240,8 +244,19 @@ def permute_subjects(HP, PFC):
             
     return  perm_all_xy, perm_all_yx, subj_hp_xy, subj_hp_yx, subj_pfc_xy, subj_pfc_yx
 
-def plot(HP, PFC):  
-    '''' Plotting function for different patterns of decoding in Figure 3F, G.'''
+def plot(HP, PFC):
+    """Plot cross-task decoding results (Fig 4F-G).
+
+    Runs all permutations and plots:
+    - Average confusion matrices for HP and PFC
+    - Bar plots comparing correct, sequential, and port decoding patterns
+    - Statistical significance from animal-permutation tests.
+
+    Parameters
+    ----------
+    HP, PFC : dict
+        Neural data dicts with keys 'DM' and 'Data'.
+    """
 
     perm_all, perm_all_2, matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2 =  permute_subjects(HP, PFC) 
     cmap =  palettable.scientific.sequential.Acton_3.mpl_colormap

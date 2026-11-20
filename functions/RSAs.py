@@ -1,69 +1,88 @@
+"""Representational Dissimilarity Matrices (RDMs) for RSA analysis.
+
+Each function returns a boolean matrix of shape (15, 15) encoding which
+trial-type pairs should be grouped together under a given hypothesis.
+
+The 15 trial types are ordered as:
+  [A_rew_T1, A_nrew_T1, A_rew_T2, A_nrew_T2, A_rew_T3, A_nrew_T3,
+   Init_T1, Init_T2, Init_T3,
+   B_rew_T1, B_nrew_T1, B_rew_T2, B_nrew_T2, B_rew_T3, B_nrew_T3]
+"""
+
 import numpy as np
 
+
+def _zeros_15x15(n_rows):
+    """Create an (n_rows, 15) boolean array initialised to False."""
+    return np.zeros((n_rows, 15), dtype=bool)
+
+
 def RSA_physical_rdm():
-    a = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    i1_i3 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),2, axis = 0)
-    i2_b3 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),3, axis = 0)
-    b1 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),2, axis = 0)
-    b2 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),2, axis = 0)
-    a[:,0:6] = True; i1_i3[:,6:8] = True; i2_b3[:,8:11] = True; b1[:,11:13] = True;  b2[:,13:15] = True
+    """Physical grouping RDM: groups by port identity.
 
-    physical_rsa = np.vstack([a,i1_i3, i2_b3, b1, b2])
-    return physical_rsa
-
+    Groups: A choices (6), Initiations 1&3 (2), Initiation 2 & B task 3 (3),
+    B task 1 (2), B task 2 (2).
+    """
+    a = _zeros_15x15(6)
+    i1_i3 = _zeros_15x15(2)
+    i2_b3 = _zeros_15x15(3)
+    b1 = _zeros_15x15(2)
+    b2 = _zeros_15x15(2)
+    a[:, 0:6] = True
+    i1_i3[:, 6:8] = True
+    i2_b3[:, 8:11] = True
+    b1[:, 11:13] = True
+    b2[:, 13:15] = True
+    return np.vstack([a, i1_i3, i2_b3, b1, b2])
 
 
 def RSA_a_b_rdm():
-    a = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    i1_i3_i2 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),3, axis = 0)
-    b = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    a[:,0:6] = True;  b[:,9:15] = True;
-    
-    choice_ab_rsa = np.vstack([a,i1_i3_i2,b])
-    return choice_ab_rsa
-   
+    """Choice identity RDM: groups A vs B choices (ignoring initiations)."""
+    a = _zeros_15x15(6)
+    i1_i3_i2 = _zeros_15x15(3)
+    b = _zeros_15x15(6)
+    a[:, 0:6] = True
+    b[:, 9:15] = True
+    return np.vstack([a, i1_i3_i2, b])
 
 
-def reward_rdm(): 
-    a = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    for i in [0,2,4]:
-        a[i,0] = True;  a[i,2] = True;  a[i,4] = True; a[i,9] = True; a[i,11] = True; a[i,13] = True;
-    for i in [1,3,5]:
-        a[i,1] = True;  a[i,3] = True;  a[i,5] = True;  a[i,10] = True; a[i,12] = True; a[i,14] = True;   
-    i1_i3_i2 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),3, axis = 0)
-    
-    reward_no_reward = np.vstack([a,i1_i3_i2,a])
-    return reward_no_reward
+def reward_rdm():
+    """Reward outcome RDM: groups rewarded vs non-rewarded trials."""
+    a = _zeros_15x15(6)
+    for i in [0, 2, 4]:
+        a[i, [0, 2, 4, 9, 11, 13]] = True
+    for i in [1, 3, 5]:
+        a[i, [1, 3, 5, 10, 12, 14]] = True
+    i1_i3_i2 = _zeros_15x15(3)
+    return np.vstack([a, i1_i3_i2, a])
 
 
 def reward_choice_space():
-    reward_no_reward = reward_rdm()
-    choice_ab_rsa = RSA_a_b_rdm()
-    
-    reward_at_choices = reward_no_reward & choice_ab_rsa 
-    return reward_at_choices
+    """Reward x Choice interaction RDM."""
+    return reward_rdm() & RSA_a_b_rdm()
 
 
 def choice_vs_initiation():
-    a = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    i1_i3_i2 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),3, axis = 0)
-    b = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    a[:,0:6] = True; a[:,9:15] = True; b[:,0:6] = True; b[:,9:15] = True; i1_i3_i2[:,6:9] = True
-    
-    choice_initiation_rsa = np.vstack([a,i1_i3_i2,b])
-    return choice_initiation_rsa
+    """Choice vs Initiation RDM: groups all choices together, initiations separate."""
+    a = _zeros_15x15(6)
+    i1_i3_i2 = _zeros_15x15(3)
+    b = _zeros_15x15(6)
+    a[:, 0:6] = True
+    a[:, 9:15] = True
+    b[:, 0:6] = True
+    b[:, 9:15] = True
+    i1_i3_i2[:, 6:9] = True
+    return np.vstack([a, i1_i3_i2, b])
 
 
 def a_bs_task_specific():
-    a = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),6, axis = 0)
-    i1_i3_i2 = np.repeat(np.array([bool(i & 0) for i in range(15)]).reshape(1,15),3, axis = 0)
+    """Task-specific A/B RDM: groups A and B choices within each task separately."""
+    a = _zeros_15x15(6)
+    i1_i3_i2 = _zeros_15x15(3)
     for i in range(len(a)):
-        if i%2 == 0:
-            a[i,i:i+2] = True;
+        if i % 2 == 0:
+            a[i, i:i + 2] = True
         else:
-            a[i,i-1:i+1] = True;
-            
+            a[i, i - 1:i + 1] = True
     b = np.flip(a)
-    a_bs_task_specific_rsa = np.vstack([a,i1_i3_i2,b])
-    return a_bs_task_specific_rsa
-        
+    return np.vstack([a, i1_i3_i2, b])

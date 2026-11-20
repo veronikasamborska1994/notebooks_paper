@@ -1,31 +1,27 @@
+"""SVD-based analysis of neural population patterns (Figure 5).
+
+Decomposes population firing rate patterns using SVD to identify dominant
+modes of variation. Compares explained variance between HP and PFC, and
+tests cross-region projection by applying SVD modes from one region to data
+from the other. Uses cross-validation (split by problem half) to avoid
+overfitting.
+
+Key functions:
+- extract_data: arrange firing rates by condition for SVD
+- svd / real_diff: compute explained variance differences between regions
+- svd_between_brains: project one region's data onto another's SVD modes
+- permute / run_permutations_and_plot: session-shuffle permutation tests
+- plot_main_figure: main plotting function (Figure 5D-H)
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from itertools import combinations 
+from itertools import combinations
+from tqdm.auto import trange
 
 
-def animal_exp_permute(all_sessions_HP,all_sessions_PFC):  
-    HP_1 = 15; HP_2 = 7 # CA1 sessions
-    PFC_1 = 9; PFC_2 = 16; PFC_3 = 13 # PFC sessions
-    
-    # trial info data for each CA1 and PFC animal
-    HP_all_sessions_1 = all_sessions_HP['DM'][0][:HP_1]; HP_all_sessions_2 = all_sessions_HP['DM'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3 = all_sessions_HP['DM'][0][HP_1+HP_2:]
-
-    PFC_all_sessions_1 = all_sessions_PFC['DM'][0][:PFC_1]; PFC_all_sessions_2 = all_sessions_PFC['DM'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3 = all_sessions_PFC['DM'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3]; PFC_all_sessions_4 = all_sessions_PFC['DM'][0][PFC_1+PFC_2+PFC_3:]
-    
-    # firing rate data for each CA1 and PFC animal
-    HP_all_sessions_1_fr = all_sessions_HP['Data'][0][:HP_1]; HP_all_sessions_2_fr = all_sessions_HP['Data'][0][HP_1:HP_1+HP_2]
-    HP_all_sessions_3_fr = all_sessions_HP['Data'][0][HP_1+HP_2:]
-
-    PFC_all_sessions_1_fr = all_sessions_PFC['Data'][0][:PFC_1]; PFC_all_sessions_2_fr = all_sessions_PFC['Data'][0][PFC_1:PFC_1+PFC_2]
-    PFC_all_sessions_3_fr = all_sessions_PFC['Data'][0][PFC_1+PFC_2:PFC_1+PFC_2+PFC_3];   PFC_all_sessions_4_fr = all_sessions_PFC['Data'][0][PFC_1+PFC_2+PFC_3:]
-   
-    all_subjects_DM = [HP_all_sessions_1,HP_all_sessions_2, HP_all_sessions_3,PFC_all_sessions_1,PFC_all_sessions_2, PFC_all_sessions_3,PFC_all_sessions_4]
-    all_subjects_fr = [HP_all_sessions_1_fr,HP_all_sessions_2_fr, HP_all_sessions_3_fr,PFC_all_sessions_1_fr,PFC_all_sessions_2_fr, PFC_all_sessions_3_fr,PFC_all_sessions_4_fr]
-
-    return  all_subjects_DM ,all_subjects_fr
+from functions.helper_functions import animal_exp_permute
 
 
 def extract_data(data, perm = False, inds =  np.arange(13,51)):
@@ -48,76 +44,32 @@ def extract_data(data, perm = False, inds =  np.arange(13,51)):
     n_neurons_cum = 0
     len_trial = len(inds)
     
-    # Create matrices to store data from tasks split by first and second half 
-    flattened_all_clusters_task_1_first_half =  np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_1_second_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_2_first_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_2_second_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_3_first_half = np.zeros((neurons,len_trial*4))
-    flattened_all_clusters_task_3_second_half = np.zeros((neurons,len_trial*4))
-     
-    for  s, sess in enumerate(all_firing): #itirate through sessions
+    # Create matrices to store data: 3 tasks × 2 halves (first, second)
+    result = [[np.zeros((neurons, len_trial * 4)) for _ in range(2)] for _ in range(3)]
+
+    # 4 conditions: A rewarded, A non-rewarded, B rewarded, B non-rewarded
+    conditions = [(1, 1), (0, 1), (1, 0), (0, 0)]  # (reward, choice) pairs
+
+    for s, sess in enumerate(all_firing): # iterate through sessions
             DM = all_subjects[s]
             firing_rates = all_firing[s][:,:,inds]
             n_trials, n_neurons, n_timepoints = firing_rates.shape
-            n_neurons_cum += n_neurons 
-            
+            n_neurons_cum += n_neurons
+            row_slice = slice(n_neurons_cum - n_neurons, n_neurons_cum)
+
             # extract trial information (reward, task, choice A/B)
-            choices = DM[:,1]; reward = DM[:,2]; task =  DM[:,5]; 
-            task_1 = np.where(task == 1)[0]; task_2 = np.where(task == 2)[0]; task_3 = np.where(task == 3)[0]
-        
-            # task indicies of the first/last half
-            task_1_1 = task_1[:int(len(task_1)/2)]; task_1_2 = task_1[int(len(task_1)/2):] 
-            task_2_1 = task_2[:int(len(task_2)/2)]; task_2_2 = task_2[int(len(task_2)/2):]
-            task_3_1 = task_3[:int(len(task_3)/2)]; task_3_2 = task_3[int(len(task_3)/2):]
-            
-            
-            # A rewarded and A non-rewared Task 1 First Half
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_1_1))],0)
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_1_1))],0)
-            # B rewarded and B non-rewared Task 1 First Half
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_1_1))],0)
-            flattened_all_clusters_task_1_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_1_1))],0)
+            choices = DM[:,1]; reward = DM[:,2]; task = DM[:,5]
 
-            # A rewarded and A non-rewared Task 1 Second Half
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial]  = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_1_2))],0)
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_1_2))],0)
-            # B rewarded and B non-rewared Task 1 Second Half
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_1_2))],0)
-            flattened_all_clusters_task_1_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_1_2))],0)
-            
-            # A rewarded and A non-rewared Task 2 First Half
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_2_1))],0)
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_2_1))],0)
-            # B rewarded and B non-rewared Task 2 First Half
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_2_1))],0)
-            flattened_all_clusters_task_2_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_2_1))],0)
+            for t_idx in range(3):  # 3 tasks
+                task_trials = np.where(task == t_idx + 1)[0]
+                halves = [task_trials[:len(task_trials)//2], task_trials[len(task_trials)//2:]]
+                for h_idx, half_trials in enumerate(halves):
+                    for c_idx, (rew_val, ch_val) in enumerate(conditions):
+                        trial_inds = np.intersect1d(np.where((reward == rew_val) & (choices == ch_val))[0], half_trials)
+                        col_slice = slice(len_trial * c_idx, len_trial * (c_idx + 1))
+                        result[t_idx][h_idx][row_slice, col_slice] = np.mean(firing_rates[trial_inds], 0)
 
-            # A rewarded and A non-rewared Task 2 Second Half
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial]  = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_2_2))],0)
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_2_2))],0)
-            # B rewarded and B non-rewared Task 2 Second Half
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_2_2))],0)
-            flattened_all_clusters_task_2_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4]= np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_2_2))],0)
-           
-            # A rewarded and A non-rewared Task 3 First Half 
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial]  = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_3_1))],0)
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2]= np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_3_1))],0)
-            # B rewarded and B non-rewared Task 3 First Half
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_3_1))],0)
-            flattened_all_clusters_task_3_first_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4]= np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_3_1))],0)
-
-            # A rewarded and A non-rewared Task 3 Second Half             
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,:len_trial] = np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 1))[0],(task_3_2))],0)
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial:len_trial*2] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 1))[0],(task_3_2))],0)
-            # B rewarded and B non-rewared Task 3 Second Half
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*2:len_trial*3]= np.mean(firing_rates[np.intersect1d(np.where((reward==1) & (choices == 0))[0],(task_3_2))],0)
-            flattened_all_clusters_task_3_second_half[n_neurons_cum-n_neurons:n_neurons_cum ,len_trial*3:len_trial*4] = np.mean(firing_rates[np.intersect1d(np.where((reward==0) & (choices == 0))[0],(task_3_2))],0)
-         
-      
-    return flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-        flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-        flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half
+    return (result[0][0], result[0][1], result[1][0], result[1][1], result[2][0], result[2][1])
        
 def svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
     flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
@@ -177,7 +129,7 @@ def svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_
         average_within = average_within_all
         average_between = average_between_all
    
-    trp = (np.trapz(average_within) - np.trapz(average_between))/average_within.shape[0] # area under the curve
+    trp = (np.trapezoid(average_within) - np.trapezoid(average_between))/average_within.shape[0] # area under the curve
     return trp,average_between,average_within
 
 
@@ -297,7 +249,7 @@ def svd_between_brains(HP,PFC, inds = np.arange(13,51)):
     sum_c_task_1_2_HP = np.cumsum(abs(s_1_2_HP))/n_neurons_HP #normalise by number of neurons
     
     # Project task 2 first half onto modes from task 2 second half (otherwise same logic)  using PFC vectors
-    s_task_2_1_from_t_2_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_HP, t_v_t_1_2_PFC])    
+    s_task_2_1_from_t_2_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_HP, t_v_t_2_2_PFC])
     s_2_1_from_t_2_2_HP = np.sum(s_task_2_1_from_t_2_2_HP**2, axis = axis)
     sum_c_task_2_1_from_t_2_2_HP = np.cumsum(abs(s_2_1_from_t_2_2_HP))/n_neurons_HP
     
@@ -325,7 +277,7 @@ def svd_between_brains(HP,PFC, inds = np.arange(13,51)):
     sum_c_task_1_2_PFC = np.cumsum(abs(s_1_2_PFC))/n_neurons_PFC #normalise by number of neurons
     
     # Project task 2 first half onto modes from task 2 second half (otherwise same logic)  using HP vectors
-    s_task_2_1_from_t_2_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_PFC, t_v_t_1_2_HP])    
+    s_task_2_1_from_t_2_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_PFC, t_v_t_2_2_HP])
     s_2_1_from_t_2_2_PFC = np.sum(s_task_2_1_from_t_2_2_PFC**2, axis = axis)
     sum_c_task_2_1_from_t_2_2_PFC = np.cumsum(abs(s_2_1_from_t_2_2_PFC))/n_neurons_PFC
     
@@ -378,60 +330,50 @@ def plot_example_patterns(data):
         plt.title('Task '+ str(vec+1))
     sns.despine()
 
+def _one_perm_svd(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds):
+    '''Single permutation iteration for permute (session-shuffle branch).'''
+    n_sessions = np.arange(len(all_subjects))
+    np.random.shuffle(n_sessions)
+    indices_HP = n_sessions[:n_hp_sessions]; indices_PFC = n_sessions[n_hp_sessions:]
+    HP_shuffle = [all_subjects[indices_HP], all_subjects_firing[indices_HP]]
+    PFC_shuffle = [all_subjects[indices_PFC], all_subjects_firing[indices_PFC]]
+    u_v_area = []
+    for data in [HP_shuffle, PFC_shuffle]:
+        f1, f1b, f2, f2b, f3, f3b = extract_data(data, perm=True, inds=inds)
+        trp, _, _ = svd(f1, f1b, f2, f2b, f3, f3b, diagonal=diagonal, axis=axis)
+        u_v_area.append(trp)
+    return u_v_area
+
+
 def permute(PFC, HP, diagonal = False, perm = 2, axis = 0, inds = np.arange(13,51), animal_perm = False):
     '''' Function to permute sessions for the svd analysis and find a distribution in differences between areas
     under the curve between PFC and HP'''
 
-    all_subjects = np.concatenate((HP['DM'][0],PFC['DM'][0]),0)     
-    all_subjects_firing = np.concatenate((HP['Data'][0],PFC['Data'][0]),0)     
-    n_sessions = np.arange(len(HP['DM'][0])+len(PFC['DM'][0]))
-    u_v_area_shuffle = []    
+    all_subjects = np.concatenate((HP['DM'][0],PFC['DM'][0]),0)
+    all_subjects_firing = np.concatenate((HP['Data'][0],PFC['Data'][0]),0)
+    n_hp_sessions = len(HP['DM'][0])
+
     if animal_perm == True:
         animals_PFC = [0,1,2,3]; animals_HP = [4,5,6]
         m, n = len(animals_PFC), len(animals_HP)
-        all_subjects_DM, all_subjects_fr  = animal_exp_permute(HP,PFC)
+        all_subjects_DM, all_subjects_fr = animal_exp_permute(HP, PFC)
+        u_v_area_shuffle = []
         for indices_PFC in combinations(range(m + n), m):
             indices_HP = [i for i in range(m + n) if i not in indices_PFC]
-            DM_PFC_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_PFC)],0)
-            firing_PFC_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_PFC)],0)
-                
-            DM_HP_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_HP)],0)
-            firing_HP_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_HP)],0)
-            HP_shuffle = [DM_HP_perm,firing_HP_perm]; PFC_shuffle = [DM_PFC_perm,firing_PFC_perm]
+            DM_PFC_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_PFC)], 0)
+            firing_PFC_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_PFC)], 0)
+            DM_HP_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_HP)], 0)
+            firing_HP_perm = np.concatenate(np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_HP)], 0)
+            HP_shuffle = [DM_HP_perm, firing_HP_perm]; PFC_shuffle = [DM_PFC_perm, firing_PFC_perm]
             u_v_area = []
-            for data in [HP_shuffle,PFC_shuffle]: # find area under curve for HP and PFC
-                flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half = extract_data(data, perm = True, inds = inds)
-
-                trp, average_between_all,average_within_all = svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half, diagonal = diagonal, axis = axis)
-                u_v_area.append(trp) 
-
+            for data in [HP_shuffle, PFC_shuffle]:
+                f1, f1b, f2, f2b, f3, f3b = extract_data(data, perm=True, inds=inds)
+                trp, _, _ = svd(f1, f1b, f2, f2b, f3, f3b, diagonal=diagonal, axis=axis)
+                u_v_area.append(trp)
             u_v_area_shuffle.append(u_v_area)
     else:
-        for i in range(perm):
-            np.random.shuffle(n_sessions) # Shuffle PFC/HP sessions
-            indices_HP = n_sessions[:len(HP['DM'][0])];  indices_PFC = n_sessions[len(HP['DM'][0]):]
-
-            # organise data for permutation test
-            PFC_shuffle_dm = all_subjects[np.asarray(indices_PFC)]; HP_shuffle_dm = all_subjects[np.asarray(indices_HP)]
-            PFC_shuffle_f = all_subjects_firing[np.asarray(indices_PFC)]; HP_shuffle_f = all_subjects_firing[np.asarray(indices_HP)]
-            HP_shuffle = [HP_shuffle_dm,HP_shuffle_f];  PFC_shuffle = [PFC_shuffle_dm,PFC_shuffle_f]
-
-            u_v_area = []
-            for data in [HP_shuffle,PFC_shuffle]: # find area under curve for HP and PFC
-                flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half = extract_data(data, perm = True, inds = inds)
-
-                trp, average_between_all,average_within_all = svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
-                flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
-                flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half, diagonal = diagonal, axis = axis)
-                u_v_area.append(trp) 
-
-            u_v_area_shuffle.append(u_v_area)
+        u_v_area_shuffle = [_one_perm_svd(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds)
+                            for _ in trange(perm, desc='SVD perms', leave=False)]
 
     return u_v_area_shuffle
 
@@ -454,10 +396,11 @@ def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm
     diff_uv = np.asarray(diff_uv)*100
     
     plt.hist(diff_uv, color = 'grey', alpha = 0.5)
-    plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink')
-    plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black')
+    plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Difference in the data')
+    plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black', label = '95% confidence interval')
     plt.ylabel('Count')
-    plt.xlabel('Permuted Differences')
+    plt.xlabel('Permuted differences')
+    plt.legend(fontsize = 7)
     if d == False:
         plt.title('Cellular and temporal singular vectors')
     elif d == True and axis == 1:
