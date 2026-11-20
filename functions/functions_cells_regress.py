@@ -16,8 +16,8 @@ import seaborn as sns
 from palettable import wesanderson as wes
 from itertools import combinations
 from math import factorial
-from joblib import Parallel, delayed
-from functions.helper_functions import _CPD, animal_exp_permute, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
+from tqdm.auto import trange
+from functions.helper_functions import _CPD, precompute_CPD, CPD_from_precomputed, animal_exp_permute, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
 
 
 def _one_perm_glm(all_subjects_DM, all_subjects_fr, n_HP_sessions):
@@ -195,46 +195,46 @@ def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
                 diff_perm[p,:] = abs(np.mean(cpd_PFC_perm,0) - np.mean(cpd_HP_perm,0))
         else:
             n_HP_sessions = len(HP['DM'][0])
-            _njobs = 1
-            results = Parallel(n_jobs=_njobs)(
-                delayed(_one_perm_glm)(all_subjects_DM, all_subjects_fr, n_HP_sessions)
-                for _ in range(perm)
-            )
+            results = [_one_perm_glm(all_subjects_DM, all_subjects_fr, n_HP_sessions)
+                       for _ in trange(perm, desc='GLM perms', leave=False)]
             diff_perm = np.stack(results, 0)
-    p_95 = np.percentile(diff_perm,95, axis = 0) # find 95th percentile
-    p_99 = np.percentile(diff_perm,99, axis = 0) # find 99th percentile
+    # Max-statistic correction: max over time per permutation, then percentile
+    max_per_perm = np.max(diff_perm, axis=1)  # (perm, n_predictors)
+    p_95 = np.percentile(max_per_perm, 95, axis=0)  # (n_predictors,)
+    p_99 = np.percentile(max_per_perm, 99, axis=0)
     real_diff = np.abs(np.mean(cpd_PFC,0) - np.mean(cpd_HP,0))
     return p_95, p_99, real_diff
     
 
 
-def GLM_roll_time(data, perm = 1000):
-    '''Simple linear regression predicting activity of each neuron at each time point across the trial, 
-    as a function of the choice, outcome and outcome x choice interaction. 
+def GLM_roll_time(data, perm = 1000, region=''):
+    '''Simple linear regression predicting activity of each neuron at each time point across the trial,
+    as a function of the choice, outcome and outcome x choice interaction.
     This function randomly rolls firing rates with respect to trials.'''
-    
+
     dm = data['DM'][0];  firing = data['Data'][0]
     cpd_perm_1  = [[] for i in range(perm)]; cpd_perm_2  = [[] for i in range(perm)]; cpd_perm_3  = [[] for i in range(perm)] 
     cpd_1  = []; cpd_2  = [];  cpd_3 = []
     
-    for  s, sess in enumerate(dm):
-        DM = dm[s]; firing_rates_all = firing[s]     
+    _desc = f'GLM roll {region}' if region else 'GLM roll sessions'
+    for  s in trange(len(dm), desc=_desc, leave=False):
+        DM = dm[s]; firing_rates_all = firing[s]
         # trial information
-        task =  DM[:,5]; choices_all = DM[:,1]; reward_all = DM[:,2]  
+        task =  DM[:,5]; choices_all = DM[:,1]; reward_all = DM[:,2]
         choices_all = choices_all-0.5
         rew_ch_all = choices_all*reward_all
         block_all = DM[:,4]
         block_min = np.min(np.diff(np.where(np.diff(block_all)!=0)))
-  
+
         # make a design matrix for each task and calculate CPDs within each task
         tasks = [1,2,3]
         firings_tasks = []; dm_tasks = []
-        for i in tasks: 
+        for i in tasks:
             choice  = choices_all[np.where(task == i)[0]]
             reward = reward_all[np.where(task == i)[0]]
             reward_ch = rew_ch_all[np.where(task == i)[0]]
             ones = np.ones(len(reward_ch))
-    
+
             firing_rates = firing_rates_all[np.where(task == i)[0]]
             X = np.vstack([choice,reward,reward_ch,ones]).T
             n_trials, n_neurons, n_timepoints = firing_rates.shape
@@ -243,7 +243,7 @@ def GLM_roll_time(data, perm = 1000):
             y = firing_rates.reshape([len(firing_rates),-1]) # activity matrix [n_trials, n_neurons*n_timepoints]
             firings_tasks.append(y)
             dm_tasks.append(X)
-            
+
             if i == 1:
                 cpd_1.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
             elif i == 2:
@@ -252,15 +252,17 @@ def GLM_roll_time(data, perm = 1000):
                 cpd_3.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors))
 
 
+        # Precompute residual-making matrices for each task (X is fixed, only y changes)
+        precomp = [precompute_CPD(X_t) for X_t in dm_tasks]
         for p in range(perm): # randomly rolls firing rates with respect to trials
             y_perm_1 = np.roll(firings_tasks[0],np.random.randint(block_min, n_trials), axis = 0)
-            cpd_perm_1[p].append(_CPD(dm_tasks[0],y_perm_1).reshape(n_neurons, n_timepoints, n_predictors))
-            
+            cpd_perm_1[p].append(CPD_from_precomputed(*precomp[0], y_perm_1).reshape(n_neurons, n_timepoints, n_predictors))
+
             y_perm_2 = np.roll(firings_tasks[1],np.random.randint(block_min, n_trials), axis = 0)
-            cpd_perm_2[p].append(_CPD(dm_tasks[1],y_perm_2).reshape(n_neurons, n_timepoints, n_predictors))
-            
+            cpd_perm_2[p].append(CPD_from_precomputed(*precomp[1], y_perm_2).reshape(n_neurons, n_timepoints, n_predictors))
+
             y_perm_3 = np.roll(firings_tasks[2],np.random.randint(block_min, n_trials), axis = 0)
-            cpd_perm_3[p].append(_CPD(dm_tasks[2],y_perm_3).reshape(n_neurons, n_timepoints, n_predictors))
+            cpd_perm_3[p].append(CPD_from_precomputed(*precomp[2], y_perm_3).reshape(n_neurons, n_timepoints, n_predictors))
             
     cpd_perm_1   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm_1],0)
     cpd_perm_2   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm_2],0)
@@ -273,13 +275,13 @@ def GLM_roll_time(data, perm = 1000):
 
 def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False): 
     '''Plotting CPDs and significance levels (Figure 4B).'''
-    cpd_HP, cpd_perm_HP =  GLM_roll_time(HP, perm = n_perm)
-    cpd_PFC, cpd_perm_PFC =  GLM_roll_time(PFC, perm = n_perm)
+    cpd_HP, cpd_perm_HP =  GLM_roll_time(HP, perm = n_perm, region='HP')
+    cpd_PFC, cpd_perm_PFC =  GLM_roll_time(PFC, perm = n_perm, region='PFC')
     p_95, p_99, real_diff = GLM_perm_across_regions(HP, PFC, perm = n_perm,  animal_perm = animal_perm)
     _xticks = XTICK_POSITIONS if not dlc else XTICK_POSITIONS_DLC
     # significance levels for session permutation across animal groups (between region comparison)
-    time_controlled_95 = np.max(p_95,0); time_controlled_99 = np.max(p_99,0) # corrected for multiple tests
-    indicies_95 = np.where(real_diff > time_controlled_95);indicies_99 = np.where(real_diff > time_controlled_99)
+    # p_95/p_99 already max-statistic corrected: (n_predictors,)
+    indicies_95 = np.where(real_diff > p_95);indicies_99 = np.where(real_diff > p_99)
     
     cpd_HP_m = np.nanmean(cpd_HP,0); cpd_PFC_m = np.nanmean(cpd_PFC,0)
     t = np.arange(0, (cpd_HP.shape)[1]) # time index 
@@ -291,8 +293,11 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
     for region,cpd in enumerate(cpds): # loop through HP and PFC
         cpd = cpds[region][:,:-1] # select all cpds except constant
         cpd_perm = cpds_perms[region][:,:,:,:-1]
-        values_95 = np.max(np.percentile(np.mean(cpd_perm,1),95,0),0) # 95th percentile corrected for multiple tests
-        values_99 = np.max(np.percentile(np.mean(cpd_perm,1),99,0),0)  # 99th percentile corrected for multiple tests
+        # Max-statistic correction: max over time per permutation, then percentile
+        perm_means = np.mean(cpd_perm, 1)  # average across sessions: (perm, n_timepoints, n_predictors)
+        max_over_time = np.max(perm_means, axis=1)  # max over time: (perm, n_predictors)
+        values_95 = np.percentile(max_over_time, 95, axis=0)  # (n_predictors,)
+        values_99 = np.percentile(max_over_time, 99, axis=0)
         array_pvals = np.ones((cpd.shape[0],cpd.shape[1]))
         for pred in range(cpd.shape[1]): # loop through pred
             array_pvals[(np.where(cpd[:,pred] > values_95[pred])[0]),pred] = 0.05 # indicate where significant at 0.05 for each region (loop)
@@ -323,7 +328,7 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
                 axs[pred].plot(t05, np.ones(t05.shape)*ymax + offset, '.', markersize = 2, color = c[region])
                 axs[pred].plot(t001, np.ones(t001.shape)*ymax + offset, '.', markersize = 4, color = c[region], label = label_region[region] + ' ' + '< .01')
                 axs[pred].plot(index_95, np.ones(index_95.shape)*ymax + offset2, '.', markersize = 2, color = 'grey')
-                axs[pred].plot(index_99, np.ones(index_99.shape)*ymax + offset2, '.', markersize = 4, color = 'grey',label = '< .001 diff PFC and HP ')
+                axs[pred].plot(index_99, np.ones(index_99.shape)*ymax + offset2, '.', markersize = 4, color = 'grey',label = '< .01 diff PFC and HP')
                 axs[pred].set_xticks(_xticks)
                 axs[pred].set_xticklabels(XTICK_LABELS)
                 axs[pred].set_xlabel('Time in Trial (s)')

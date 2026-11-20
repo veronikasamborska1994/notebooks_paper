@@ -8,6 +8,7 @@ Defaults: 5000 permutations, figures saved to ./figures/
 """
 
 import argparse
+import gc
 import os
 import sys
 import time
@@ -245,6 +246,6 @@ for desc, prefix, func in pbar:
     except Exception as e:
         tqdm.write(f"  !! ERROR in {desc}: {e}")
         plt.close('all')
-        continue
+    gc.collect()
 
 print(f"\nDone! All figures saved to {OUTPUT_DIR}/")

@@ -21,9 +21,9 @@ from palettable import wesanderson as wes
 from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 from itertools import combinations
-from joblib import Parallel, delayed
-from functions.helper_functions import (task_ind, _CPD, animal_exp_permute,
-    HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
+from tqdm.auto import trange
+from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed,
+    animal_exp_permute, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
     XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS, TIME_INDICES, TIME_INDICES_DLC)
 
 
@@ -109,13 +109,13 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
     cpd_perm  = [[] for i in range(perm)] # to store cpds based on permuted data
     cpd  = [] # to store cpds 
     policy_beh = policy_for_GLM(data, n = n, perm = False)
-    for  s, sess in enumerate(dm):
+    for  s in trange(len(dm), desc='Policy GLM roll', leave=False):
         DM = dm[s]; firing_rates = firing[s]
         n_trials, n_neurons, n_timepoints = firing_rates.shape
-        choices = DM[:,1]; reward = DM[:,2];  choices_current = choices-0.5 
-    
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials 
-        previous_choices = scipy.linalg.toeplitz(0.5-choices, np.zeros(n))[n-1:-1] # find choices on n-back trials       
+        choices = DM[:,1]; reward = DM[:,2];  choices_current = choices-0.5
+
+        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
+        previous_choices = scipy.linalg.toeplitz(0.5-choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
         interactions = scipy.linalg.toeplitz((((0.5-choices)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
         ones = np.ones(len(interactions)).reshape(len(interactions),1) # constant
         X = np.hstack([previous_rewards,previous_choices,interactions,ones]) # design matrix for calculating policy
@@ -132,9 +132,10 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         y = firing_rates.reshape([len(firing_rates),-1]) # activity matrix [n_trials, n_neurons*n_timepoints]
         cpd.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors)) # calculate coefficients of partial determination
         
+        M_full, Ms = precompute_CPD(X)
         for i in range(perm):  # randomly rolls firing rates with respect to trials
             y_perm = np.roll(y,np.random.randint(n, n_trials), axis = 0)
-            cpd_perm[i].append(_CPD(X,y_perm).reshape(n_neurons, n_timepoints, n_predictors))
+            cpd_perm[i].append(CPD_from_precomputed(M_full, Ms, y_perm).reshape(n_neurons, n_timepoints, n_predictors))
     
     cpd_perm   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm],0)
     cpd = np.concatenate(cpd,0)
@@ -343,11 +344,8 @@ def permute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, anim
     n_pfc_sessions = PFC['DM'][0].shape[0]
 
     if animal_perm == False:
-        _njobs = 1
-        results = Parallel(n_jobs=_njobs)(
-            delayed(_one_perm_policy_A_B)(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind)
-            for _ in range(perm_n)
-        )
+        results = [_one_perm_policy_A_B(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind)
+                   for _ in trange(perm_n, desc='Policy corr perms', leave=False)]
         diff_PFC_HP_perm = [r[0] for r in results]
         PFC_HP_perm = [r[1] for r in results]
     else:
@@ -434,44 +432,61 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
     # find permuted differences
     diff_PFC_HP_perm, PFC_HP_perm = permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
     diff_PFC_HP_perm = np.asarray(diff_PFC_HP_perm);  PFC_HP_perm  = np.asarray(PFC_HP_perm); task_mean_A_B = np.asarray(task_mean_A_B)
-    _95th = np.percentile(diff_PFC_HP_perm, 95,0) # .05 difference in CA1 and PFC B - A choice policy
-    
+
     b_a = np.asarray(task_mean_A_B[0])- np.asarray(task_mean_A_B[1]) # real B - A choice policy difference
     diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # difference in B - A PFC - CA1
-    indx_b_a_diff = np.where(diff_PFC_HP > np.max(_95th)) # where difference between CA1 and PFC in B - A significant at .05 (corrected for multiple comparisons)
-   
-    # significant differences between CA1 and PFC on A and B choices
-    _95th_a_b = np.percentile(PFC_HP_perm, 95, 0)
-    
+
+    # Max-statistic correction for B-A difference: max across anchors and time per permutation, then percentile
+    n_p = len(diff_PFC_HP_perm)
+    max_ba_per_perm = np.max(diff_PFC_HP_perm.reshape(n_p, -1), axis=1)  # (perm_n,)
+    _95th_ba = np.percentile(max_ba_per_perm, 95)
+    indx_b_a_diff = np.where(diff_PFC_HP > _95th_ba)
+
+    # Max-statistic correction for A and B separately
+    # PFC_HP_perm shape: (perm_n, 2, 3, n_timepoints) — 2=A/B, 3=init/ch/rew
+    max_a_per_perm = np.max(PFC_HP_perm[:, 0].reshape(n_p, -1), axis=1)  # (perm_n,)
+    max_b_per_perm = np.max(PFC_HP_perm[:, 1].reshape(n_p, -1), axis=1)
+    _95th_a = np.percentile(max_a_per_perm, 95); _99th_a = np.percentile(max_a_per_perm, 99)
+    _95th_b = np.percentile(max_b_per_perm, 95); _99th_b = np.percentile(max_b_per_perm, 99)
+
     # real A/B difference between CA1 and PFC on A and B trials
-    a_b_real = task_mean_A_B[:,3:,:] - task_mean_A_B[:,:3,:] # PFC - CA1 
-    significant_diff_a = np.where(a_b_real[0] > np.max(_95th_a_b[0])) # .05 significant on A
-    significant_diff_b = np.where(a_b_real[1] > np.max(_95th_a_b[1]))  # .05 significant on B
-    
-    fig, axs = plt.subplots(1,3, figsize = (15, 3)); isl = [wes.Royal2_5.mpl_colors[0],wes.Royal2_5.mpl_colors[3]]; 
-    titles_str = ['Initiation','Choice', 'Outcome'] # list of titles 
+    a_b_real = task_mean_A_B[:,3:,:] - task_mean_A_B[:,:3,:] # PFC - CA1
+    significant_diff_a_05 = np.where(a_b_real[0] > _95th_a)
+    significant_diff_b_05 = np.where(a_b_real[1] > _95th_b)
+    significant_diff_a_01 = np.where(a_b_real[0] > _99th_a)
+    significant_diff_b_01 = np.where(a_b_real[1] > _99th_b)
+
+    fig, axs = plt.subplots(1,3, figsize = (15, 3)); isl = [wes.Royal2_5.mpl_colors[0],wes.Royal2_5.mpl_colors[3]];
+    titles_str = ['Initiation','Choice', 'Outcome'] # list of titles
     HP_corr_plot = [task_mean_A_B[0][:3], task_mean_A_B[1][:3]]; PFC_corr_plot = [task_mean_A_B[0][3:], task_mean_A_B[1][3:]]
     regions_label = [['CA1 A', 'CA1 B'],['PFC A', 'PFC B']];
     ymax = np.max([np.max(np.max(HP_corr_plot,0),0),np.max(np.max(PFC_corr_plot,0),0)])+0.05
     linestyles = ['solid', 'dashed']
-    for region, correlation in enumerate([HP_corr_plot, PFC_corr_plot]): # loop through A and B        
-        for ab, ab_corr in enumerate(correlation):     
+    for region, correlation in enumerate([HP_corr_plot, PFC_corr_plot]): # loop through A and B
+        for ab, ab_corr in enumerate(correlation):
             for per,period in enumerate(ab_corr):
-                axs[per].plot(ab_corr[per], color = isl[region], label = regions_label[region][ab], linestyle = linestyles[ab] ) # plot correlations 
+                axs[per].plot(ab_corr[per], color = isl[region], label = regions_label[region][ab], linestyle = linestyles[ab] ) # plot correlations
                 axs[per].set_title(titles_str[per])
-                if region == 1 and ab == 1: 
-                    p_a = significant_diff_a[1][np.where(significant_diff_a[0] == per)[0]]
-                    p_b = significant_diff_b[1][np.where(significant_diff_b[0] == per)[0]]
-                    p_a_b = indx_b_a_diff[1][np.where(indx_b_a_diff[0] == per)[0]] 
-                    axs[per].plot(p_a, np.ones(p_a.shape)*ymax + 0.02, '.', markersize = 4, color= 'green', label = 'A PFC vs CA1')
-                    axs[per].plot(p_b, np.ones(p_b.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = 'B PFC vs CA1')
-                    axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.07, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
+                if region == 1 and ab == 1:
+                    # A: P < .05 (small dots) and P < .01 (large dots)
+                    p_a_05 = significant_diff_a_05[1][np.where(significant_diff_a_05[0] == per)[0]]
+                    p_a_01 = significant_diff_a_01[1][np.where(significant_diff_a_01[0] == per)[0]]
+                    axs[per].plot(p_a_05, np.ones(p_a_05.shape)*ymax + 0.02, '.', markersize = 2, color= 'green')
+                    axs[per].plot(p_a_01, np.ones(p_a_01.shape)*ymax + 0.02, '.', markersize = 4, color= 'green', label = 'A PFC vs CA1 < .01')
+                    # B: P < .05 (small dots) and P < .01 (large dots)
+                    p_b_05 = significant_diff_b_05[1][np.where(significant_diff_b_05[0] == per)[0]]
+                    p_b_01 = significant_diff_b_01[1][np.where(significant_diff_b_01[0] == per)[0]]
+                    axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink')
+                    axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = 'B PFC vs CA1 < .01')
+                    # B-A difference
+                    p_a_b = indx_b_a_diff[1][np.where(indx_b_a_diff[0] == per)[0]]
+                    axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
                     axs[per].set_xticks(_xticks)
-                    axs[per].set_ylim(-0.15, ymax+0.08)
+                    axs[per].set_ylim(-0.15, ymax+0.1)
                     axs[per].set_xticklabels(XTICK_LABELS)
                     axs[per].set_xlabel('Time in Trial (s)')
                     axs[per].set_ylabel('Correlation Coefficient')
-                        
+
     axs[per].legend()
     sns.despine()
 
@@ -519,11 +534,8 @@ def permute_sessions_diagonal(HP, PFC, c_1 = 1, n = 11, perm_n = 2, dlc = False,
         all_subjects = np.hstack([PFC['DM'][0], HP['DM'][0]])
         all_subjects_firing = np.hstack([PFC['Data'][0], HP['Data'][0]])
         n_pfc_sessions = PFC['DM'][0].shape[0]
-        _njobs = 1
-        results = Parallel(n_jobs=_njobs)(
-            delayed(_one_perm_diagonal)(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, dlc)
-            for _ in range(perm_n)
-        )
+        results = [_one_perm_diagonal(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, dlc)
+                   for _ in trange(perm_n, desc='Diagonal perms', leave=False)]
         all_shuffle_a = [r[0] for r in results]
         all_shuffle_b = [r[1] for r in results]
     else:

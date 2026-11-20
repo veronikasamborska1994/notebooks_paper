@@ -116,6 +116,57 @@ def _CPD(X, y):
     return cpd
 
 
+def precompute_CPD(X):
+    """Precompute residual-making matrices for fast repeated CPD with the same X.
+
+    For roll-permutation tests where X stays fixed and only y changes,
+    this avoids recomputing pseudoinverses on every call.
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_trials, n_predictors)
+
+    Returns
+    -------
+    M_full : ndarray, shape (n_trials, n_trials)
+        Residual maker for the full model.
+    Ms : list of ndarray
+        Residual makers for each leave-one-predictor-out reduced model.
+    """
+    I = np.eye(X.shape[0])
+    M_full = I - X @ np.linalg.pinv(X)
+    Ms = []
+    for i in range(X.shape[1]):
+        X_i = np.delete(X, i, axis=1)
+        Ms.append(I - X_i @ np.linalg.pinv(X_i))
+    return M_full, Ms
+
+
+def CPD_from_precomputed(M_full, Ms, y):
+    """Compute CPD using precomputed residual-making matrices.
+
+    Parameters
+    ----------
+    M_full : ndarray from precompute_CPD
+    Ms : list of ndarray from precompute_CPD
+    y : ndarray, shape (n_trials, n_outputs)
+
+    Returns
+    -------
+    cpd : ndarray, shape (n_outputs, n_predictors)
+    """
+    sse = np.sum((M_full @ y) ** 2, axis=0)
+    cpd = np.zeros([y.shape[1], len(Ms)])
+    for i, M_i in enumerate(Ms):
+        sse_i = np.sum((M_i @ y) ** 2, axis=0)
+        zero_mask = sse_i == 0
+        if np.any(zero_mask):
+            cpd[:, i] = np.nan
+        else:
+            cpd[:, i] = (sse_i - sse) / sse_i
+    return cpd
+
+
 def _cpd(X, y):
     """Coefficient of partial determination for single-output regression.
 

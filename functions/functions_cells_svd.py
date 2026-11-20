@@ -18,7 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from itertools import combinations
-from joblib import Parallel, delayed
+from tqdm.auto import trange
 
 
 from functions.helper_functions import animal_exp_permute
@@ -372,11 +372,8 @@ def permute(PFC, HP, diagonal = False, perm = 2, axis = 0, inds = np.arange(13,5
                 u_v_area.append(trp)
             u_v_area_shuffle.append(u_v_area)
     else:
-        _njobs = 1
-        u_v_area_shuffle = Parallel(n_jobs=_njobs)(
-            delayed(_one_perm_svd)(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds)
-            for _ in range(perm)
-        )
+        u_v_area_shuffle = [_one_perm_svd(all_subjects, all_subjects_firing, n_hp_sessions, diagonal, axis, inds)
+                            for _ in trange(perm, desc='SVD perms', leave=False)]
 
     return u_v_area_shuffle
 
