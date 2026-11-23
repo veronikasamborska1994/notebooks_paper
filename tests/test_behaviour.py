@@ -56,15 +56,43 @@ def trials_to_threshold(sessions):
     return seen['x'][:10]
 
 
-def test_carry_over_uses_last_crossing():
-    # crossings at 10, 40 and 80; the session ends before the last reversal
+def test_counts_restart_after_crossing_without_reversal():
+    # crossings at 10, 40 and 80; the session ends before the last reversal, so the next count starts at 0
     x = trials_to_threshold([session_1e(100, (10, 40, 80), (20, 50)), session_1e(60, (30,), (40,))])
-    assert list(x[:4]) == [10, 20, 30, 30 + (100 - 80)]
+    assert list(x[:4]) == [11, 20, 30, 31]
 
 
-def test_forced_trials_subtracted_once():
+def test_forced_trials_excluded_once():
     x = trials_to_threshold([session_1e(50, n_forced=7), session_1e(60, (30,), (40,))])
-    assert x[0] == 30 + 50
+    assert x[0] == 50 + 31
+
+
+def test_several_sessions_without_crossing_accumulate():
+    x = trials_to_threshold([session_1e(50, n_forced=3), session_1e(20), session_1e(30, n_forced=2), session_1e(60, (30,), (40,))])
+    assert x[0] == 50 + 20 + 30 + 31
+
+
+def test_trials_after_last_reversal_carry_over():
+    # 60 trials, reversal after trial 40: 19 trials of the new block in this session
+    x = trials_to_threshold([session_1e(60, (30,), (40,)), session_1e(25), session_1e(60, (10,), (20,))])
+    assert list(x[:2]) == [31, 19 + 25 + 11]
+
+
+def test_counter_resets_on_new_problem():
+    original, seen = fb.pd.DataFrame.from_dict, {}
+    s = [session_1e(60, (30,), (40,)), session_1e(60, (10,), (20,), config=2)]
+
+    def grab(data):
+        seen['x'] = np.asarray(data['Data'])
+        raise Captured
+    fb.pd.DataFrame.from_dict = staticmethod(grab)
+    try:
+        fb.trials_till_reversal_plot(Experiment(s))
+    except Captured:
+        pass
+    finally:
+        fb.pd.DataFrame.from_dict = original
+    assert seen['x'][0] == 31 and seen['x'][10] == 11
 
 
 def test_fig1f_window_starts_on_first_new_state_trial():

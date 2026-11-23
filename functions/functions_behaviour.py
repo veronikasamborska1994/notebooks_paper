@@ -110,22 +110,26 @@ def trials_till_reversal_plot(experiment):
                 trials_from_prev_session = 0
                 previous_session_config = configuration[0]  
     
-            if len(threshold_crossing_trials) > 0:
-                  for i, crossing_trial in enumerate(threshold_crossing_trials): 
-                    if reversal_number <= 9:
-                        if i == 0: # first element in the threshold_crossing_trials_list 
-                            reversal_to_threshold[n_subj, task_number-1, reversal_number] = crossing_trial+trials_from_prev_session
-                            trials_from_prev_session = 0
-                        elif i > 0: # for other than the first threshold in the session calculate the number of trials since block change
-                            reversal_to_threshold[n_subj, task_number-1, reversal_number] = (crossing_trial-reversal_trials[i-1])
-                        reversal_number += 1   
-            
-            # if animals crossed a threshold but session ended before the block change store trials from this session to add to the next
-            if len(reversal_trials) != len(threshold_crossing_trials):
-                trials_from_prev_session = n_trials - threshold_crossing_trials[-1]
-            # if no threshold crossing occured in the session store trials from this session to add to the next
-            elif len(threshold_crossing_trials) == 0:
-                trials_from_prev_session = n_trials # forced trials were already removed above
+            # trials since the last reversal: the first crossing of a session also counts the trials carried over
+            # from earlier sessions of the same problem; later ones count from the preceding reversal
+            # (reversal_trials holds the last trial of each block)
+            for i, crossing_trial in enumerate(threshold_crossing_trials):
+                if reversal_number <= 9:
+                    if i == 0:
+                        reversal_to_threshold[n_subj, task_number-1, reversal_number] = trials_from_prev_session + crossing_trial + 1
+                    else:
+                        reversal_to_threshold[n_subj, task_number-1, reversal_number] = crossing_trial - reversal_trials[i-1]
+                    reversal_number += 1
+
+            # trials since the last reversal at the end of the session, carried over to the next session
+            if len(threshold_crossing_trials) == 0:
+                trials_from_prev_session += n_trials # no crossing: keep adding up
+            elif len(reversal_trials) == len(threshold_crossing_trials):
+                trials_from_prev_session = n_trials - 1 - reversal_trials[-1]
+            else:
+                # session ended after a crossing but before the reversal: in the data the next session always starts
+                # with the countdown off and the threshold has to be crossed again, so the count restarts
+                trials_from_prev_session = 0
    
     # organize data for ANOVAs
     rev = np.tile(np.arange(reversals),n_subjects*tasks); task_n = np.tile(np.repeat(np.arange(tasks),reversals),n_subjects); n_subj = np.repeat(np.arange(n_subjects),tasks*reversals)
