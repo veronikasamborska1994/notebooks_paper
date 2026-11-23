@@ -1,6 +1,6 @@
 """SVM decoding of trial states across task layouts (Figure 4F-G).
 
-Trains a linear SVM to classify trial position (initiation, A/B choice,
+Trains an SVM (RBF kernel) to classify trial position (initiation, A/B choice,
 A/B reward, A/B no-reward) using neural population activity from one task
 layout, then tests cross-task generalisation on a different layout.
 Animal-shuffle permutation tests compare HP vs PFC.
@@ -90,7 +90,8 @@ def _session_patterns(firing, DM, task_test):
 
 def _fit_and_score(train, test, labels):
     """Row-normalised confusion matrix in percent (rows true, columns predicted)."""
-    pred = svm.SVC(gamma='scale').fit(train, labels).predict(test)
+    # RBF kernel with gamma='scale': the scikit-learn default, as used for the published figure
+    pred = svm.SVC(kernel='rbf', gamma='scale').fit(train, labels).predict(test)
     cnf = metrics.confusion_matrix(labels, pred, labels=np.arange(len(STATES)))
     return cnf / cnf.sum(1, keepdims=True) * 100
 
