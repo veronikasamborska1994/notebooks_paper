@@ -122,10 +122,10 @@ def trials_till_reversal_plot(experiment):
             
             # if animals crossed a threshold but session ended before the block change store trials from this session to add to the next
             if len(reversal_trials) != len(threshold_crossing_trials):
-                trials_from_prev_session = n_trials - threshold_crossing_trials[i-1]
+                trials_from_prev_session = n_trials - threshold_crossing_trials[-1]
             # if no threshold crossing occured in the session store trials from this session to add to the next
             elif len(threshold_crossing_trials) == 0:
-                trials_from_prev_session = n_trials - forced_trials_sum
+                trials_from_prev_session = n_trials # forced trials were already removed above
    
     # organize data for ANOVAs
     rev = np.tile(np.arange(reversals),n_subjects*tasks); task_n = np.tile(np.repeat(np.arange(tasks),reversals),n_subjects); n_subj = np.repeat(np.arange(n_subjects),tasks*reversals)
@@ -219,9 +219,9 @@ def meta_learning_reversals(experiment):
                                         
             if len(block_transitions_id) > 1: # if block transition happened during the session
                 for b in block_transitions_id:
-                    if b > tr and (b + tr) <= len(state): # only take blocks for which all 10 post and 10 pre reversal trials exist in a single session
-                        state_around_block.append(state[b - tr: b + tr])
-                        choice_around_block.append(choices[b - tr: b + tr])
+                    if b > tr and (b + 1 + tr) <= len(state): # only take blocks for which all 10 post and 10 pre reversal trials exist in a single session
+                        state_around_block.append(state[b + 1 - tr: b + 1 + tr]) # b is the last trial of the old block, so index tr is the first trial of the new one
+                        choice_around_block.append(choices[b + 1 - tr: b + 1 + tr])
     
             states_block.append(state_around_block)
             choices_block.append(choice_around_block)
@@ -231,7 +231,7 @@ def meta_learning_reversals(experiment):
         choices_block_subj = [x for x in choices_block if x != []]; choices_block_subj = np.concatenate(choices_block_subj,0)
         
         # was the block change from A to B or vice versa?
-        change_from_a = np.where(states_block_subj[:,tr] == 1)[0]; change_from_b = np.where(states_block_subj[:,tr] == 0)[0]
+        change_from_a = np.where(states_block_subj[:,tr-1] == 1)[0]; change_from_b = np.where(states_block_subj[:,tr-1] == 0)[0]
         a_first.append(np.mean(choices_block_subj[change_from_a[:10]],0)) #first 10 reversals
         a_last.append(np.mean(choices_block_subj[change_from_a[-10:]],0)) #last 10 reversals
 
@@ -252,7 +252,7 @@ def meta_learning_reversals(experiment):
         
     # t-test to compare slopes across animals
     stat = stats.ttest_rel(slope_f,slope_l)
-    print('Learning to Learn of the Block Structure ' +'df = ', (len(slope_f)*2)-1, ' t = ' + str(np.round(stat.statistic,2)), ' p = ' + str(np.round(stat.pvalue,3)))
+    print('Learning to Learn of the Block Structure ' +'df = ', len(slope_f)-1, ' t = ' + str(np.round(stat.statistic,2)), ' p = ' + str(np.round(stat.pvalue,3)))
      
     # reverse A to B --> to the same sign as B to A (Correct vs Incorrect)
     correct_first = np.mean([1-mean_a_f,mean_b_f],0);  correct_first_std  = np.mean([std_a_f,std_b_f],0)
@@ -458,7 +458,7 @@ def out_of_sequence(experiment, first_task_only=False):
         slope_l.append(np.log(abs(1/(subj_p_l[1]))))
        
     stat = stats.ttest_rel(slope_f,slope_l)
-    print('Learning to Learn of the Trial Structure ' + 'df = ', (len(slope_f)*2)-1, ' t = ' + str(np.round(stat.statistic,2)), ' p = ' + str(np.round(stat.pvalue,3)))
+    print('Learning to Learn of the Trial Structure ' + 'df = ', len(slope_f)-1, ' t = ' + str(np.round(stat.statistic,2)), ' p = ' + str(np.round(stat.pvalue,3)))
     firstH = np.mean(mice_out[:5],0)
     lasttH = np.mean(mice_out[5:],0)
     
