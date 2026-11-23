@@ -222,3 +222,8 @@ def test_recordings_trials_to_threshold_counts_first_block_fully():
     finally:
         fr.pd.DataFrame.from_dict = original
     assert np.allclose(seen['x'][:12], 7)                   # every block takes 7 trials, the first included
+
+
+def test_rewarded_streak_resets_on_first_error():
+    from functions.functions_behaviour_rec import rewarded_streak
+    assert list(rewarded_streak([1, 1, 1, 0, 1, 1, 0, 0, 1])) == [0, 1, 2, 3, 0, 1, 2, 0, 0]

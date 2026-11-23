@@ -384,6 +384,15 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
 
     
    
+def rewarded_streak(correct_rewarded):
+    """Number of consecutive correct, rewarded choices immediately before each trial (0 after an error or no reward)."""
+    streak = np.zeros(len(correct_rewarded)); count = 0
+    for t, good in enumerate(correct_rewarded):
+        streak[t] = count
+        count = count + 1 if good else 0
+    return streak
+
+
 def forced_trials_(experiment):
     As_state_a_b_s = []; Bs_state_a_b_s = []; As_state_b_a_s = []; Bs_state_b_a_s = []  
     other_state_b_subj = []; other_state_a_subj = []
@@ -420,14 +429,7 @@ def forced_trials_(experiment):
 
             correct = np.hstack([correct_1,correct_2,correct_3])
             reward = session.trial_data['outcomes']; corr_rew = correct*reward
-            corr_rew = np.insert(corr_rew,0,0); 
-            cum = [0]; cum_ = 0
-            for crr,cor in enumerate(corr_rew):
-                cum_ = cum_+ corr_rew[crr]
-                cum.append(cum_)
-                if corr_rew[crr] == 0:
-                    cum_ = 0 
-            cum  = np.asarray(cum[:len(reward)])
+            cum = rewarded_streak(corr_rew)
             for ev,event in enumerate(events_forced):
                 if event == 'init_trial':
                     if ev < len(events_forced)-1:
