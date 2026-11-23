@@ -344,6 +344,8 @@ def out_of_sequence(experiment, first_task_only=False):
                 elif event == 'a_forced_state' or event == 'b_forced_state':
                     prev_choice  = 'forced_state' # don't include forced trials
                       
+            # counts are appended at the next choice, so drop the first (empty) one and add the last trial's
+            session_wrong_choice = session_wrong_choice[1:] + [wrong_count]
             if j == 0: 
                 all_sessions_wrong_ch = session_wrong_choice[:trials]  
             elif j > 0: 
@@ -356,7 +358,7 @@ def out_of_sequence(experiment, first_task_only=False):
             
             for i in range(trials):
                 for r in reversal_trials:
-                    if i == r:
+                    if i == r + 1: # r is the last trial of the old block
                         reversal_number += 1
                 all_reversals.append(reversal_number) # record reversal in task number
                 all_tasks.append(task_number)# record task number

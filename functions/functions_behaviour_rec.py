@@ -270,8 +270,9 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                                 if choice_state == False and (prev_choice == 'Poke_B_3' or prev_choice == 'Poke_A_3'):
                                     wrong_count += 1 
                       
-                session_wrong_choice = session_wrong_choice[:len(task)] 
-                reversal_trials = np.insert(reversal_trials,0,0)
+                # counts are appended at the next choice, so drop the first (empty) one and add the last trial's
+                session_wrong_choice = (session_wrong_choice[1:] + [wrong_count])[:len(task)]
+                reversal_trials = np.insert(reversal_trials + 1,0,0) # first trial of each block
                 reversal_trials = np.append(reversal_trials,len(task)); reversal_mean = []
                 for i,revs in enumerate(reversal_trials):
                      if i > 0 and i < len(reversal_trials)-1:

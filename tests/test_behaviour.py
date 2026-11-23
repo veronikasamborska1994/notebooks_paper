@@ -80,3 +80,91 @@ def test_fig1f_window_starts_on_first_new_state_trial():
     for line in fb.plt.gca().get_lines()[:2]:
         assert np.allclose(line.get_ydata(), np.r_[np.zeros(10), np.ones(10)])
     fb.plt.close('all')
+
+
+class Ev:
+    def __init__(self, name):
+        self.name = name
+
+
+def poke_session(n, wrong_trial, rev):
+    """One out-of-sequence poke on trial `wrong_trial`; the block changes on trial rev + 1."""
+    events = []
+    for t in range(n):
+        events += ['init_trial', 'choice_state', 'poke_1'] + (['poke_2'] if t == wrong_trial else [])
+    block = np.zeros(n, int); block[rev + 1:] = 1
+    s = Session(block=block, forced_trial=np.zeros(n, int), n_trials=n,
+                configuration_i=np.full(n, 5), poke_A=np.full(n, 1), poke_B=np.full(n, 2))
+    s.events = [Ev(e) for e in events]
+    return s
+
+
+def bad_pokes_first_problem(session):
+    """Mean out-of-sequence pokes per reversal of the first problem (Fig 1g data)."""
+    original, seen = fb.pd.DataFrame.from_dict, {}
+
+    def grab(data):
+        seen['x'] = np.asarray(data['Data'])
+        raise Captured
+    fb.pd.DataFrame.from_dict = staticmethod(grab)
+    try:
+        with np.errstate(all='ignore'):
+            fb.out_of_sequence(Experiment([session]))
+    except Captured:
+        pass
+    finally:
+        fb.pd.DataFrame.from_dict = original
+    return seen['x'][:2]
+
+
+def test_poke_on_last_trial_of_old_block():
+    # block 1 = trials 0-9 (10 trials), so one poke on trial 9 gives 0.1 and 0
+    assert np.allclose(bad_pokes_first_problem(poke_session(20, 9, 9)), [0.1, 0])
+
+
+def test_poke_on_first_trial_of_new_block():
+    assert np.allclose(bad_pokes_first_problem(poke_session(20, 10, 9)), [0, 0.1])
+
+
+def test_poke_on_last_trial_of_session_is_counted():
+    assert np.allclose(bad_pokes_first_problem(poke_session(20, 19, 9)), [0, 0.1])
+
+
+class RecCaptured(Exception):
+    pass
+
+
+def rec_pokes(wrong_trial):
+    """Reversal means of the first problem (4 blocks of 5 trials per problem, 3 problems)."""
+    from functions import functions_behaviour_rec as fr
+    n = 70; tl = np.arange(n)
+    block = tl // 5; task = np.minimum(tl // 20, 2) + 1
+    events = []
+    for t in range(n):
+        a = {1: 'poke_1', 2: 'poke_3', 3: 'poke_5'}[task[t]]; b = {1: 'poke_2', 2: 'poke_4', 3: 'poke_6'}[task[t]]
+        events += ['init_trial', 'choice_state', a] + ([b] if t == wrong_trial else [])
+    s = Session(block=block, task=task, configuration_i=np.full(n, 9),
+                poke_A=np.array([1, 3, 5])[task - 1], poke_B=np.array([2, 4, 6])[task - 1])
+    s.events = [Ev(e) for e in events]
+    seen, original = {}, fr.pd.DataFrame.from_dict
+
+    def grab(data):
+        seen['x'] = np.asarray(data['Data'])
+        raise RecCaptured
+    fr.pd.DataFrame.from_dict = staticmethod(grab)
+
+    class Subject:
+        def get_sessions(self):
+            return [s] * 8                        # 8 sessions x 3 problems = the 24 expected
+    try:
+        fr.out_of_sequence_recordings([Subject(), Subject()])
+    except RecCaptured:
+        pass
+    finally:
+        fr.pd.DataFrame.from_dict = original
+    return seen['x'][:4]
+
+
+def test_recordings_poke_at_block_boundary():
+    assert np.allclose(rec_pokes(4), [0.2, 0, 0, 0])      # last trial of block 1
+    assert np.allclose(rec_pokes(5), [0, 0.2, 0, 0])      # first trial of block 2
