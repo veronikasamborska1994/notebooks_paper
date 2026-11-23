@@ -401,7 +401,7 @@ def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm
     
     plt.hist(diff_uv, color = 'grey', alpha = 0.5)
     plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Difference in the data')
-    plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black', label = '95% confidence interval')
+    plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black', label = 'permutation threshold (P < .05)')
     plt.ylabel('Count')
     plt.xlabel('Permuted differences')
     plt.legend(fontsize = 7)

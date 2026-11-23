@@ -610,7 +610,7 @@ def plot_diagonal_sums(HP, PFC,c_1 = 1, perm_n = 2, dlc = False, animal_perm = F
         plt.subplot(1,2,d+1)
         plt.hist(diff, color = 'grey', alpha = 0.5)
         plt.vlines(real[d],ymin = 0, ymax = max(np.histogram(diff)[0]),  color = 'pink', label = 'Difference in the data')
-        plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]), color = 'black', label = '95% confidence interval')
+        plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]), color = 'black', label = 'permutation threshold (P < .05)')
         plt.xlabel('Permuted differences'); plt.ylabel('Count')
         plt.legend(fontsize = 7)
         plt.title(str_title[d])
