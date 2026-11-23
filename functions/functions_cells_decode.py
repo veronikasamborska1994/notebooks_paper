@@ -8,6 +8,7 @@ Animal-shuffle permutation tests compare HP vs PFC.
 Key functions:
 - decoder_trial_states: train/test SVM decoder for one task pair
 - permute_subjects: run all animal permutations
+- decoding_statistics: exact animal-permutation P values for the Fig 4G bars
 - plot: main plotting function
 """
 
@@ -35,216 +36,149 @@ def import_cell_data(path):
     return HP, PFC, HP_dlc, PFC_dlc
 
 
-def decoder_trial_states(data, task_test = 0, H = 0, perm = True, decoder_full = True):
-    '''Simple linear decoding of position in the trial (Initiation, A/B choice/reward/no-reward) 
-    using data from one problem, and tested the decoding performance on a different problem (Figure 3F, G).'''
-    
-    cnf_matrix_subj_x_y = [] # task x to y confusion matrix
-    cnf_matrix_subj_y_x = [] # task y to x confusion matrix
+STATES = ['Initiation', 'A choice', 'A reward', 'A no-reward', 'B choice', 'B reward', 'B no-reward']
+TASK_PAIRS = {1: (1, 2), 2: (1, 3), 3: (2, 3)}   # task_test -> (task x, task y)
 
-    if perm == True: # data selection if it's a permutation test
-        all_subjects_dm = data[0];  all_subjects_data = data[1]
+# Confusion-matrix cells (true row, predicted column) averaged for the Port bar, for training on
+# task 2 / testing on task 3 and for training on task 3 / testing on task 2.
+# In all 81 recorded sessions the initiation port of task 2 (DM column 8) is the B port of task 3,
+# and the initiation port of task 3 is never the B port of task 2. The cells in which the true and
+# the predicted state share a physical port are therefore B choice -> Initiation when trained on
+# task 2 and tested on task 3, and Initiation -> B choice for the reverse.
+PORT_CELLS_SAME_PORT = ((4, 0), (0, 4))
+# Cells used for the printed figure: they compare two different physical ports.
+PORT_CELLS_PUBLISHED = ((0, 4), (4, 0))
+
+MIN_TRIALS = 10         # a session is used if every choice x outcome x task has more trials than this
+BIN_INIT, BIN_CHOICE, BIN_REWARD = 24, 35, 42
+
+
+def _split_by_animal(data, splits):
+    """Split a {'DM', 'Data'} dict into per-animal lists (last animal is the remainder)."""
+    bounds = [0] + list(np.cumsum(splits)) + [None]
+    return ([data['DM'][0][i:j] for i, j in zip(bounds[:-1], bounds[1:])],
+            [data['Data'][0][i:j] for i, j in zip(bounds[:-1], bounds[1:])])
+
+
+def _session_patterns(firing, DM, task_test):
+    """Return (task x, task y) matrices (samples x neurons, ordered as STATES) or None if too few trials."""
+    taskid = task_ind(DM[:, 5], DM[:, 6], DM[:, 7])
+    index = MIN_TRIALS // 2 + 1                            # last `index` trials of each type
+    bins_init = [BIN_INIT - 1, BIN_INIT]
+    bins_choice = [BIN_CHOICE - 1, BIN_CHOICE]
+    bins_reward = [BIN_REWARD, BIN_REWARD + 1]
+
+    def stack(trials, bins):
+        fr = firing[trials][:, :, bins][-index:]
+        return np.concatenate(np.transpose(fr, [0, 2, 1]), 0)
+
+    patterns = []
+    for task in TASK_PAIRS[task_test]:
+        in_task = taskid == task
+        blocks = [stack(np.where(in_task)[0], bins_init)]
+        for choice in (1, 0):                               # A then B
+            chosen = in_task & (DM[:, 1] == choice)
+            rewarded = np.where(chosen & (DM[:, 2] == 1))[0]
+            unrewarded = np.where(chosen & (DM[:, 2] == 0))[0]
+            if len(rewarded) <= MIN_TRIALS or len(unrewarded) <= MIN_TRIALS:
+                return None
+            blocks += [stack(np.where(chosen)[0], bins_choice),
+                       stack(rewarded, bins_reward), stack(unrewarded, bins_reward)]
+        patterns.append(np.vstack(blocks))
+    return patterns
+
+
+def _fit_and_score(train, test, labels):
+    """Row-normalised confusion matrix in percent (rows true, columns predicted)."""
+    pred = svm.SVC(gamma='scale').fit(train, labels).predict(test)
+    cnf = metrics.confusion_matrix(labels, pred, labels=np.arange(len(STATES)))
+    return cnf / cnf.sum(1, keepdims=True) * 100
+
+
+def decoder_trial_states(data, task_test=0, H=0, perm=True, decoder_full=True):
+    """Decode position in the trial across two tasks (Fig 4F, G).
+
+    Returns two lists (one 7 x 7 matrix per animal): train on task x / test on y, and the reverse.
+    ``decoder_full`` is kept for backward compatibility and is unused.
+    """
+    if perm:
+        dms, firing = data
     else:
-        # Split sessions by animal using shared constants
-        splits = HP_SESSIONS_PER_ANIMAL if H == 0 else PFC_SESSIONS_PER_ANIMAL
-        dm_all = data['DM'][0]; fr_all = data['Data'][0]
-        boundaries = np.cumsum([0] + list(splits))
-        all_subjects_dm = [dm_all[boundaries[i]:boundaries[i+1]] for i in range(len(splits))]
-        all_subjects_data = [fr_all[boundaries[i]:boundaries[i+1]] for i in range(len(splits))]
-        # Last group is the remainder
-        all_subjects_dm.append(dm_all[boundaries[-1]:])
-        all_subjects_data.append(fr_all[boundaries[-1]:])
-    
-    for ss,subj in enumerate(all_subjects_dm): # loop through subjects
-        y = all_subjects_dm[ss]; X = all_subjects_data[ss]
-        all_sessions_a1 = []; all_sessions_a2 = []; all_sessions_b1 = [];  all_sessions_b2 = [] 
-    
-        for s, sess in enumerate(X): # loop through sessions
-            firing_rates_all_time = X[s]; DM = y[s]     
-            choices = DM[:,1]; choices_a = np.where(choices  == 1)[0]; choices_b = np.where(choices  == 0)[0]
-            reward = DM[:,2]; reward_p = np.where(reward == 1)[0];  reward_n = np.where(reward == 0)[0]
-            task  = DM[:,5]; poke_A = DM[:,6];  poke_B = DM[:,7]     
-            taskid = task_ind(task,poke_A,poke_B); task_1 = np.where(taskid  == 1)[0]; task_2 = np.where(taskid  == 2)[0]; task_3 = np.where(taskid  == 3)[0]
-            
-            min_trials_in_task = 10 # only take sessions with enough trials for training and testing
-            initiation = 24; ind_choice = 35; ind_reward = 42; bins_around = 1 # indicies where init, ch, reward and bins around
-            ind_around_init = np.arange(initiation-bins_around, initiation+bins_around)
-            ind_around_choice = np.arange(ind_choice-bins_around, ind_choice+bins_around)
-            ind_around_reward =  np.arange(ind_reward, ind_reward+(2*bins_around))
-    
-            if task_test == 1: # task 1 & 2
-                task_n1 = task_1; task_n2 = task_2
-            elif task_test == 2: # task 1 & 3
-                task_n1 = task_1; task_n2 = task_3
-            elif task_test == 3: # task 2 & 3
-                task_n1 = task_2;  task_n2 = task_3
-            
-            # choices A & B in the two tasks
-            choices_a_1 = np.intersect1d(choices_a, task_n1);  choices_b_1 = np.intersect1d(choices_b, task_n1)
-            choices_a_2 = np.intersect1d(choices_a, task_n2); choices_b_2 = np.intersect1d(choices_b, task_n2)
-            
-            # rewards and no-rewards on A & B in two takss 
-            choices_a_1_r = np.intersect1d(choices_a_1, reward_p);choices_a_2_r = np.intersect1d(choices_a_2, reward_p)
-            choices_b_1_r = np.intersect1d(choices_b_1, reward_p);  choices_b_2_r = np.intersect1d(choices_b_2, reward_p) 
-            
-            choices_a_1_nr = np.intersect1d(choices_a_1, reward_n); choices_a_2_nr = np.intersect1d(choices_a_2, reward_n)
-            choices_b_1_nr = np.intersect1d(choices_b_1, reward_n); choices_b_2_nr = np.intersect1d(choices_b_2, reward_n)
-            
-            
-            if len(choices_a_1_r) > min_trials_in_task and  len(choices_a_2_r) > min_trials_in_task \
-                and  len(choices_b_1_r) > min_trials_in_task and  len(choices_b_2_r) > min_trials_in_task \
-                and len(choices_a_1_nr) > min_trials_in_task and  len(choices_a_2_nr) > min_trials_in_task \
-                and len(choices_b_1_nr) > min_trials_in_task and  len(choices_b_2_nr) > min_trials_in_task :    
-                index = int((min_trials_in_task)/2)+1
+        dms, firing = _split_by_animal(data, HP_SESSIONS_PER_ANIMAL if H == 0 else PFC_SESSIONS_PER_ANIMAL)
 
-                # initiations
-                fr_1_init = firing_rates_all_time[task_n1]; fr_1_init =  fr_1_init[:,:,ind_around_init][-index:];  fr_1_init = np.concatenate(np.transpose(fr_1_init,[0,2,1]),0)
-                fr_2_init = firing_rates_all_time[task_n2]; fr_2_init =  fr_2_init[:,:,ind_around_init][-index:]; fr_2_init = np.concatenate(np.transpose(fr_2_init,[0,2,1]),0)
-                
-                # A choices task 1 
-                fr_a_1_ch = firing_rates_all_time[choices_a_1]; fr_a_1_ch =  fr_a_1_ch[:,:,ind_around_choice][-index:]; fr_a_1_ch = np.concatenate(np.transpose(fr_a_1_ch,[0,2,1]),0)
-                fr_a_1_ch_r = firing_rates_all_time[choices_a_1_r]; fr_a_1_ch_r =  fr_a_1_ch_r[:,:,ind_around_reward][-index:]; fr_a_1_ch_r = np.concatenate(np.transpose(fr_a_1_ch_r,[0,2,1]),0)
-                fr_a_1_ch_nr = firing_rates_all_time[choices_a_1_nr]; fr_a_1_ch_nr =  fr_a_1_ch_nr[:,:,ind_around_reward][-index:]; fr_a_1_ch_nr = np.concatenate(np.transpose(fr_a_1_ch_nr,[0,2,1]),0)
-                
-                # A choices task 2
-                fr_a_2_ch = firing_rates_all_time[choices_a_2]; fr_a_2_ch = fr_a_2_ch[:,:,ind_around_choice][-index:]; fr_a_2_ch = np.concatenate(np.transpose(fr_a_2_ch,[0,2,1]),0)
-                fr_a_2_ch_r = firing_rates_all_time[choices_a_2_r]; fr_a_2_ch_r =  fr_a_2_ch_r[:,:,ind_around_reward][-index:]; fr_a_2_ch_r = np.concatenate(np.transpose(fr_a_2_ch_r,[0,2,1]),0)
-                fr_a_2_ch_nr = firing_rates_all_time[choices_a_2_nr]; fr_a_2_ch_nr =  fr_a_2_ch_nr[:,:,ind_around_reward][-index:]; fr_a_2_ch_nr = np.concatenate(np.transpose(fr_a_2_ch_nr,[0,2,1]),0)
-                
-                # B choices task 1 
-                fr_b_1_ch = firing_rates_all_time[choices_b_1]; fr_b_1_ch =  fr_b_1_ch[:,:,ind_around_choice][-index:]; fr_b_1_ch = np.concatenate(np.transpose(fr_b_1_ch,[0,2,1]),0)
-                fr_b_1_ch_r = firing_rates_all_time[choices_b_1_r]; fr_b_1_ch_r =  fr_b_1_ch_r[:,:,ind_around_reward][-index:]; fr_b_1_ch_r = np.concatenate(np.transpose(fr_b_1_ch_r,[0,2,1]),0)
-                fr_b_1_ch_nr = firing_rates_all_time[choices_b_1_nr]; fr_b_1_ch_nr =  fr_b_1_ch_nr[:,:,ind_around_reward][-index:]; fr_b_1_ch_nr = np.concatenate(np.transpose(fr_b_1_ch_nr,[0,2,1]),0)
-        
-                # B choices task 2
-                fr_b_2_ch = firing_rates_all_time[choices_b_2]; fr_b_2_ch = fr_b_2_ch[:,:,ind_around_choice][-index:]; fr_b_2_ch = np.concatenate(np.transpose(fr_b_2_ch,[0,2,1]),0)
-                fr_b_2_ch_r = firing_rates_all_time[choices_b_2_r]; fr_b_2_ch_r =  fr_b_2_ch_r[:,:,ind_around_reward][-index:];  fr_b_2_ch_r = np.concatenate(np.transpose(fr_b_2_ch_r,[0,2,1]),0)
-                fr_b_2_ch_nr = firing_rates_all_time[choices_b_2_nr]; fr_b_2_ch_nr = fr_b_2_ch_nr[:,:,ind_around_reward][-index:]; fr_b_2_ch_nr = np.concatenate(np.transpose(fr_b_2_ch_nr,[0,2,1]),0)
-        
-                all_sessions_a1.append(np.vstack([fr_1_init,fr_a_1_ch,fr_a_1_ch_r,fr_a_1_ch_nr]))
-                all_sessions_a2.append(np.vstack([fr_2_init,fr_a_2_ch,fr_a_2_ch_r,fr_a_2_ch_nr]))
-                all_sessions_b1.append(np.vstack([fr_b_1_ch,fr_b_1_ch_r,fr_b_1_ch_nr]))
-                all_sessions_b2.append(np.vstack([fr_b_2_ch,fr_b_2_ch_r,fr_b_2_ch_nr]))
-        
-        # create firing rates matrices for each subject (combine sessions together)
-        all_sessions_b1 = np.concatenate(all_sessions_b1,1); all_sessions_b2 = np.concatenate(all_sessions_b2,1)
-        all_sessions_a1 = np.concatenate(all_sessions_a1,1); all_sessions_a2 = np.concatenate(all_sessions_a2,1)
-       
-        training_1 = np.vstack([all_sessions_a1,all_sessions_b1]); training_2 = np.vstack([all_sessions_a2,all_sessions_b2])
-        bins = np.hstack([np.zeros(index*len(ind_around_init)), np.zeros(index*len(ind_around_init))+1, np.zeros(index*len(ind_around_init))+2, np.zeros(index*len(ind_around_init))+3,
-                              np.zeros(index*len(ind_around_init))+4, np.zeros(index*len(ind_around_init))+5, np.zeros(index*len(ind_around_init))+6])
-                
-        # across tasks
-        # task x to y decoding
-        model_nb = svm.SVC(gamma='scale')
-        model_nb.fit(training_1,bins)  
-        y_pred_class = model_nb.predict(training_2)
-            
-        cnf_matrix = metrics.confusion_matrix(bins,y_pred_class)
-        cnf_matrix = (cnf_matrix/np.sum(cnf_matrix,1))*100 
-            
-        # task y to x decoding
-        model_nb = svm.SVC(gamma='scale')
-        model_nb.fit(training_2,bins)  
-        y_pred_class_2 = model_nb.predict(training_1)
-          
-        cnf_matrix_2 = metrics.confusion_matrix(bins,y_pred_class_2)
-        cnf_matrix_2 = (cnf_matrix_2/np.sum(cnf_matrix_2,1))*100 
-  
-        cnf_matrix_subj_x_y.append(cnf_matrix) # list of all subjects' confusion matrices x y
-        cnf_matrix_subj_y_x.append(cnf_matrix_2) # list of all subjects' confusion matrices y x
+    xy, yx = [], []
+    for animal_dm, animal_fr in zip(dms, firing):
+        sessions = [_session_patterns(f, d, task_test) for f, d in zip(animal_fr, animal_dm)]
+        sessions = [p for p in sessions if p is not None]
+        task_x = np.concatenate([p[0] for p in sessions], 1)
+        task_y = np.concatenate([p[1] for p in sessions], 1)
+        labels = np.repeat(np.arange(len(STATES)), task_x.shape[0] // len(STATES))
+        xy.append(_fit_and_score(task_x, task_y, labels))
+        yx.append(_fit_and_score(task_y, task_x, labels))
+    return xy, yx
 
-            
-    return cnf_matrix_subj_x_y, cnf_matrix_subj_y_x
-    
 
 def permute_subjects(HP, PFC):
-    """Permute subjects between regions and run decoder for all task pairs (Fig 4F-G).
+    """Enumerate all 35 assignments of 7 animals to PFC (4) and CA1 (3) (Fig 4F-G).
 
-    Enumerates all C(7,3) = 35 ways to split 7 animals into groups of 3 (HP)
-    and 4 (PFC), runs the decoder for each split, and compares against the
-    real HP/PFC assignment.
-
-    Parameters
-    ----------
-    HP, PFC : dict
-        Neural data dicts with keys 'DM' and 'Data'.
+    Decoding is done within animal and does not depend on the grouping, so each animal is
+    decoded once and only the group averages are permuted.
 
     Returns
     -------
-    perm_all_xy, perm_all_yx : list
-        Permuted confusion matrices for each direction.
-    subj_hp_xy, subj_hp_yx : list
-        Real HP confusion matrices.
-    subj_pfc_xy, subj_pfc_yx : list
-        Real PFC confusion matrices.
+    perm_all_xy, perm_all_yx : ndarray (6, 35, 7, 7)
+        First three rows PFC, last three CA1, task pairs (1,2), (1,3), (2,3).
+    subj_hp_xy, subj_hp_yx, subj_pfc_xy, subj_pfc_yx : ndarray (3 pairs, animals, 7, 7)
     """
-    
-    # Split sessions by animal using shared helper
-    all_subjects, all_subjects_firing = animal_exp_permute(HP, PFC)
+    data = animal_exp_permute(HP, PFC)                      # animals 0-2 CA1, 3-6 PFC
+    both = np.array([decoder_trial_states(data, task_test=c, perm=True) for c in TASK_PAIRS])
+    xy, yx = both[:, 0], both[:, 1]                         # (pair, animal, 7, 7)
+    perm_xy, perm_yx = [], []
+    for m, out in ((xy, perm_xy), (yx, perm_yx)):
+        groups = [(list(pfc), [i for i in range(7) if i not in pfc]) for pfc in combinations(range(7), 4)]
+        for which in (0, 1):                                # PFC, then CA1
+            for pair in range(3):
+                out.append([m[pair, g[which]].mean(0) for g in groups])
+    return (np.asarray(perm_xy), np.asarray(perm_yx),
+            xy[:, :3], yx[:, :3], xy[:, 3:], yx[:, 3:])
 
-    animals_PFC = [0,1,2,3]; animals_HP = [4,5,6]
-    m, n = len(animals_PFC), len(animals_HP)
-    # arrays to store permutations for x to y task decoding
-    perm_pfc_1_2_xy = []; perm_pfc_1_3_xy = [];  perm_pfc_2_3_xy = []
-    perm_hp_1_2_xy = []; perm_hp_1_3_xy = [];  perm_hp_2_3_xy = []
-    
-    # arrays to store permutations for y to x task decoding
-    perm_pfc_1_2_yx = []; perm_pfc_1_3_yx = [];  perm_pfc_2_3_yx = []
-    perm_hp_1_2_yx = []; perm_hp_1_3_yx = [];  perm_hp_2_3_yx = []
-    for indices_PFC in combinations(range(m + n), m):
-        indices_HP = [i for i in range(m + n) if i not in indices_PFC]
-       
-        PFC_shuffle_dm = np.asarray(all_subjects, dtype=object)[np.asarray(indices_PFC)];  HP_shuffle_dm = np.asarray(all_subjects, dtype=object)[np.asarray(indices_HP)]
-        PFC_shuffle_f = np.asarray(all_subjects_firing, dtype=object)[np.asarray(indices_PFC)]; HP_shuffle_f = np.asarray(all_subjects_firing, dtype=object)[np.asarray(indices_HP)]
-        HP_shuffle= [HP_shuffle_dm,HP_shuffle_f]; PFC_shuffle = [PFC_shuffle_dm,PFC_shuffle_f]
-        
-        cnf_matrix_subj_pfc_perm_1_2, cnf_matrix_subj_pfc_perm_1_2_2 = decoder_trial_states(PFC_shuffle, task_test = 1, H = 1, perm = True)
-        cnf_matrix_subj_pfc_perm_1_3, cnf_matrix_subj_pfc_perm_1_3_2 = decoder_trial_states(PFC_shuffle, task_test = 2, H = 1, perm = True)
-        cnf_matrix_subj_pfc_perm_2_3, cnf_matrix_subj_pfc_perm_2_3_2 = decoder_trial_states(PFC_shuffle, task_test = 3, H = 1, perm = True)
 
-        cnf_matrix_subj_hp_perm_1_2, cnf_matrix_subj_hp_perm_1_2_2 = decoder_trial_states(HP_shuffle, task_test = 1, H = 1, perm = True)
-        cnf_matrix_subj_hp_perm_1_3, cnf_matrix_subj_hp_perm_1_3_2 = decoder_trial_states(HP_shuffle, task_test = 2, H = 1, perm = True)
-        cnf_matrix_subj_hp_perm_2_3, cnf_matrix_subj_hp_perm_2_3_2 = decoder_trial_states(HP_shuffle, task_test = 3, H = 1, perm = True)
-        
-        # permutation confusion matrices for x to y task decoding
-        perm_pfc_1_2_xy.append(np.mean(cnf_matrix_subj_pfc_perm_1_2,0))
-        perm_pfc_1_3_xy.append(np.mean(cnf_matrix_subj_pfc_perm_1_3,0))
-        perm_pfc_2_3_xy.append(np.mean(cnf_matrix_subj_pfc_perm_2_3,0))
+def decoding_scores(m1, m2, same_port=True):
+    """Per-animal Correct, Position and Port scores. m1, m2: (pair, animal, 7, 7)."""
+    m1 = np.asarray(m1); m2 = np.asarray(m2)
+    av = np.mean([m1, m2], 0).mean(0)
+    (r1, c1), (r2, c2) = PORT_CELLS_SAME_PORT if same_port else PORT_CELLS_PUBLISHED
+    return {'Correct': np.mean([av[:, i, i] for i in (4, 5, 6)], 0),
+            'Position in Trial Sequence': np.mean([av[:, 4, 1], av[:, 5, 2], av[:, 6, 3]], 0),
+            'Port': np.mean([m1[2][:, r1, c1], m2[2][:, r2, c2]], 0)}
 
-        perm_hp_1_2_xy.append(np.mean(cnf_matrix_subj_hp_perm_1_2,0))
-        perm_hp_1_3_xy.append(np.mean(cnf_matrix_subj_hp_perm_1_3,0))
-        perm_hp_2_3_xy.append(np.mean(cnf_matrix_subj_hp_perm_2_3,0))
 
-        # permutation confusion matrices for x to y task decoding
-        perm_pfc_1_2_yx.append(np.mean(cnf_matrix_subj_pfc_perm_1_2_2,0))
-        perm_pfc_1_3_yx.append(np.mean(cnf_matrix_subj_pfc_perm_1_3_2,0))
-        perm_pfc_2_3_yx.append(np.mean(cnf_matrix_subj_pfc_perm_2_3_2,0))
-            
-        perm_hp_1_2_yx.append(np.mean(cnf_matrix_subj_hp_perm_1_2_2,0))
-        perm_hp_1_3_yx.append(np.mean(cnf_matrix_subj_hp_perm_1_3_2,0))
-        perm_hp_2_3_yx.append(np.mean(cnf_matrix_subj_hp_perm_2_3_2,0))
-           
-    
-    perm_all_xy = [perm_pfc_1_2_xy, perm_pfc_1_3_xy, perm_pfc_2_3_xy, perm_hp_1_2_xy, perm_hp_1_3_xy, perm_hp_2_3_xy]
-    perm_all_yx = [perm_pfc_1_2_yx, perm_pfc_1_3_yx, perm_pfc_2_3_yx, perm_hp_1_2_yx, perm_hp_1_3_yx, perm_hp_2_3_yx]
+def animal_permutation_null(hp, pfc, direction):
+    """Real difference and the 35-split null. direction: +1 PFC > CA1, -1 CA1 > PFC."""
+    both = np.concatenate([hp, pfc]); n = len(both); k = len(hp)
 
-    subj_hp_xy = [];  subj_hp_yx = []
-    for cond in np.arange(3)+1:
-        cnf_matrix_subj_x_y, cnf_matrix_subj_y_x = decoder_trial_states(HP, task_test = cond, H = 0, perm = False)
-        subj_hp_xy.append(cnf_matrix_subj_x_y)
-        subj_hp_yx.append(cnf_matrix_subj_y_x)
+    def diff(idx):
+        rest = [i for i in range(n) if i not in idx]
+        return direction * (both[rest].mean() - both[list(idx)].mean())
 
-    subj_pfc_xy = [];  subj_pfc_yx = []
-    for cond in np.arange(3)+1:
-        cnf_matrix_subj_x_y, cnf_matrix_subj_y_x  = decoder_trial_states(PFC,task_test = cond, H = 1, perm = False)
-        subj_pfc_xy.append(cnf_matrix_subj_x_y)
-        subj_pfc_yx.append(cnf_matrix_subj_y_x)
-  
-            
-    return  perm_all_xy, perm_all_yx, subj_hp_xy, subj_hp_yx, subj_pfc_xy, subj_pfc_yx
+    return diff(tuple(range(k))), np.array([diff(c) for c in combinations(range(n), k)])
 
-def plot(HP, PFC):
+
+def decoding_statistics(hp1, hp2, pfc1, pfc2, same_port=True):
+    """Scores, differences and exact P values for the three bars of Fig 4G.
+
+    The null is computed from the same per-animal scores as the real difference.
+    """
+    hp = decoding_scores(hp1, hp2, same_port); pfc = decoding_scores(pfc1, pfc2, same_port)
+    out = {}
+    for name, sign in (('Correct', 1), ('Position in Trial Sequence', 1), ('Port', -1)):
+        diff, null = animal_permutation_null(hp[name], pfc[name], sign)
+        p, rank = exact_perm_p(diff, null)
+        out[name] = {'hp': hp[name], 'pfc': pfc[name], 'diff': diff, 'p': p, 'rank': rank, 'null': null}
+    return out
+
+
+def plot(HP, PFC, same_port=True):
     """Plot cross-task decoding results (Fig 4F-G).
 
     Runs all permutations and plots:
@@ -256,9 +190,13 @@ def plot(HP, PFC):
     ----------
     HP, PFC : dict
         Neural data dicts with keys 'DM' and 'Data'.
+    same_port : bool
+        True (default): Port cells that share a physical port, as defined in the paper.
+        False: the cells used for the printed figure.
     """
 
     perm_all, perm_all_2, matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2 =  permute_subjects(HP, PFC) 
+    stats = decoding_statistics(matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2, same_port)
     cmap =  palettable.scientific.sequential.Acton_3.mpl_colormap
     
     # plot average decoding matrices between all task pairs
@@ -282,83 +220,17 @@ def plot(HP, PFC):
 
     fig.colorbar(img, ax = axs)
 
-    ## REAL DIFFERENCES
-    
-    ### Init B task (task 2 --> 3; 3 --> 2)
-    # Init and B PFC
-    subj_pfc_t2_3_b = np.asarray(matrix_pfc_1)[2,:,0,4]; subj_pfc_t3_2_b = np.asarray(matrix_pfc_2)[2,:,4,0]
-    subj_pfc_b = np.mean([subj_pfc_t2_3_b,subj_pfc_t3_2_b],0); std_pfc_b  = np.std(subj_pfc_b)/np.sqrt(len(subj_pfc_b))
+    subj_hp_gen, subj_hp_seq, subj_hp_b = [stats[k]['hp'] for k in stats]
+    subj_pfc_gen, subj_pfc_seq, subj_pfc_b = [stats[k]['pfc'] for k in stats]
+    sem = lambda v: np.std(v)/np.sqrt(len(v))
+    gen_hp_std, sequence_hp_std, std_hp_b = map(sem, (subj_hp_gen, subj_hp_seq, subj_hp_b))
+    gen_pfc_std, sequence_pfc_std, std_pfc_b = map(sem, (subj_pfc_gen, subj_pfc_seq, subj_pfc_b))
+    labels = list(stats)
+    for name in labels:
+        st = stats[name]
+        print('%s decoding %s (exact p = %d/%d = %.3f)' % (name, 'p < 0.05' if st['p'] <= 0.05 else 'NS',
+                                                           st['rank'], len(st['null']), st['p']))
 
-    # Init and B HP
-    subj_hp_t2_3_b = np.asarray(matrix_hp_1)[2,:,0,4];  subj_hp_t3_2_b = np.asarray(matrix_hp_2)[2,:,4,0]
-    subj_hp_b = np.mean([subj_hp_t2_3_b,subj_hp_t3_2_b],0); std_hp_b  = np.std(subj_hp_b)/np.sqrt(len(subj_hp_b))
-    IB_real =  np.mean(subj_hp_b) - np.mean(subj_pfc_b)
-
-    # average across tasks for the rest of the analyses
-    subj_hp_all = np.mean([matrix_hp_1, matrix_hp_2],0); subj_pfc_all = np.mean([matrix_pfc_1, matrix_pfc_2],0)
-   
-    # Generalisation HP
-    subj_hp_gen = np.mean(subj_hp_all,0)
-    subj_hp_gen = [np.mean(np.diag(subj_hp_gen[0])[4:]), np.mean(np.diag(subj_hp_gen[1])[4:]),np.mean(np.diag(subj_hp_gen[2])[4:])]
-    gen_hp_std = np.std(subj_hp_gen,0)/np.sqrt(len(subj_hp_gen))
-    
-    # Generalisation PFC
-    subj_pfc_gen = np.mean(subj_pfc_all,0)
-    subj_pfc_gen = [np.mean(np.diag(subj_pfc_gen[0])[4:]), np.mean(np.diag(subj_pfc_gen[1])[4:]),np.mean(np.diag(subj_pfc_gen[2])[4:]),\
-                    np.mean(np.diag(subj_pfc_gen[3])[4:])]
-    gen_pfc_std = np.std(subj_pfc_gen)/np.sqrt(len(subj_pfc_gen))
-    generalisation = np.mean(subj_pfc_gen,0) - np.mean(subj_hp_gen,0) # difference between PFC and HP in generalisation to the same B
- 
-    # Sequence HP
-    subj_hp_seq = np.mean(subj_hp_all,0)
-    subj_hp_seq = [np.mean([subj_hp_seq[0][4,1],subj_hp_seq[0][5,2],subj_hp_seq[0][6,3]]),\
-                   np.mean([subj_hp_seq[1][4,1],subj_hp_seq[1][5,2],subj_hp_seq[1][6,3]]),\
-                   np.mean([subj_hp_seq[2][4,1],subj_hp_seq[2][5,2],subj_hp_seq[2][6,3]])]  
-  
-    sequence_hp_std = np.std(subj_hp_seq,0)/np.sqrt(len(subj_hp_seq))
-    
-    # Sequence PFC
-    subj_pfc_seq = np.mean(subj_pfc_all,0) 
-    subj_pfc_seq = [np.mean([subj_pfc_seq[0][4,1],subj_pfc_seq[0][5,2],subj_pfc_seq[0][6,3]]),\
-                   np.mean([subj_pfc_seq[1][4,1],subj_pfc_seq[1][5,2],subj_pfc_seq[1][6,3]]),\
-                   np.mean([subj_pfc_seq[2][4,1],subj_pfc_seq[2][5,2],subj_pfc_seq[2][6,3]]),\
-                   np.mean([subj_pfc_seq[3][4,1],subj_pfc_seq[3][5,2],subj_pfc_seq[3][6,3]])]
-    
-    sequence_pfc_std = np.std(subj_pfc_seq,0)/np.sqrt(len(subj_pfc_seq))
-    seq_real = np.mean(subj_pfc_seq)- np.mean(subj_hp_seq)  # difference between PFC and HP in sequence decoding 
-
-    ## PERMUTED DIFFERENCES
-    perm_all = np.asarray(perm_all); perm_all_2 = np.asarray(perm_all_2)
-
-    ### Init B task (task 2 --> 3; 3 --> 2)
-    # same statistic as for the real data: cell [0,4] for task 2 --> 3 and cell [4,0] for task 3 --> 2
-    perm_hp_b = np.mean([perm_all[5][:,0,4], perm_all_2[5][:,4,0]],0)
-    perm_pfc_b = np.mean([perm_all[2][:,0,4], perm_all_2[2][:,4,0]],0)
-    IB_null = perm_hp_b - perm_pfc_b # one value per animal split
-    
-    # Significance for other decoding patterns averaged across all tasks 
-    tasks_pfc = np.mean(np.mean([perm_all[:3], perm_all_2[:3]],0),0) # average across all task pairs
-    tasks_hp = np.mean(np.mean([perm_all[3:], perm_all_2[3:]],0),0) # average across all task pairs
-    perc_all = np.asarray(tasks_pfc - tasks_hp) # differences between PFC and HP 
-    
-    # Sequence Significance
-    # same statistic as for the real data: mean of the three cells within each permutation
-    perc_all_seq = np.mean([perc_all[:,4,1], perc_all[:,5,2], perc_all[:,6,3]],0)
-   
-    # Generalisation Significance
-    perc_generalisation = np.mean([perc_all[:,4,4], perc_all[:,5,5], perc_all[:,6,6]],0)
-
-    labels = ['Correct','Position in Trial Sequence','Port']
-    # exact one-sided P = (number of the 35 animal splits with a difference >= the real one) / 35.
-    # An interpolated 95th percentile would let a difference ranked 2nd of 35 (P = 0.057) pass.
-    real_stats = [generalisation, seq_real, IB_real]
-    null_stats = [perc_generalisation, perc_all_seq, IB_null]
-    for sg, label in enumerate(labels):
-        p_exact, rank = exact_perm_p(real_stats[sg], null_stats[sg])
-        sign_text = 'p < 0.05' if p_exact <= 0.05 else 'NS'
-        print(label + ' ' + 'decoding' + ' ' + sign_text + ' (exact p = ' + str(rank) + '/' + str(len(null_stats[sg])) + ' = ' + str(np.round(p_exact,3)) + ')')
-
-    
     # plot Correct, Position in Sequence and Port decoding patterns 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
