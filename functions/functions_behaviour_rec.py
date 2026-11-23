@@ -642,10 +642,10 @@ def plot_forced(experiment):
     a_oth = scipy.stats.ttest_rel(Bs_state_b_a_s,other_state_a_subj)
     b_oth = scipy.stats.ttest_rel(As_state_a_b_s,other_state_b_subj)
     
-    print('A vs B in A forced B good:' + ' t = ' + str(np.round(a_b.statistic,2)) + ' p = ' + str(np.round(a_b.pvalue,2)));
-    print('B vs other in A forced B good:' + ' t = ' + str(np.round(a_oth.statistic,2)) + ' p = ' + str(np.round(a_oth.pvalue,2)));
-    print('A vs B in B forced A good:' +  ' t = ' + str(np.round(b_a.statistic,2)) + ' p = ' + str(np.round(b_a.pvalue,2)));
-    print('A vs other in B forced A good:'+ ' t = ' + str(np.round(b_oth.statistic,2)) + ' p = ' + str(np.round(b_oth.pvalue,2)));
+    print('A vs B in A forced B good:' + ' t = ' + str(np.round(a_b.statistic,2)) + ' p = ' + str(np.round(a_b.pvalue,3)));
+    print('B vs other in A forced B good:' + ' t = ' + str(np.round(a_oth.statistic,2)) + ' p = ' + str(np.round(a_oth.pvalue,3)));
+    print('A vs B in B forced A good:' +  ' t = ' + str(np.round(b_a.statistic,2)) + ' p = ' + str(np.round(b_a.pvalue,3)));
+    print('A vs other in B forced A good:'+ ' t = ' + str(np.round(b_oth.statistic,2)) + ' p = ' + str(np.round(b_oth.pvalue,3)));
 
     d_str = np.hstack([np.tile('As',7),np.tile('Bs',7), np.tile('Other',7)])
     data = {'Choice Probability': d_a, 'Poke Identity': d_str}

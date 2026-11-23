@@ -134,12 +134,16 @@ steps = [
      "ext2ac_reversals_rec",
      lambda: fun_beh_rec.trials_till_reversal_plot_recordings(exp_rec)),
 
-    ("Ext Fig 2D-F | Out of sequence during recording",
+    ("Ext Fig 2D-F | Out of sequence (A/B pokes only)",
      "ext2df_oos_rec",
      lambda: fun_beh_rec.out_of_sequence_recordings(exp_rec, only_A_B=True)),
 
-    ("Ext Fig 1I-J | Forced choice trials",
-     "ext1ij_forced",
+    ("Ext Fig 2D-G | Out of sequence (all pokes)",
+     "ext2dg_oos_all",
+     lambda: fun_beh_rec.out_of_sequence_recordings(exp_rec, only_A_B=False)),
+
+    ("Ext Fig 2I-J | Forced choice trials",
+     "ext2ij_forced",
      lambda: fun_beh_rec.plot_forced(exp_rec)),
 
     # ---- NEURAL: Main Figures ----
@@ -165,7 +169,7 @@ steps = [
 
     ("Fig 5D-E | SVD between brains",
      "fig5de_svd_brains",
-     lambda: SVD.svd_between_brains(HP_dlc, PFC_dlc, inds=np.arange(64))),
+     lambda: SVD.svd_between_brains(HP, PFC)),
 
     ("Fig 5D-H | SVD main figure (session perms)",
      "fig5dh_svd_main",
