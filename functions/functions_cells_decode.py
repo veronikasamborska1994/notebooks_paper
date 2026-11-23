@@ -336,8 +336,8 @@ def plot(HP, PFC):
     IB_perm = np.percentile(perm_sp_hp_pfc[:,0,4],95,0);
     
     # Significance for other decoding patterns averaged across all tasks 
-    tasks_pfc = np.mean(np.mean([perm_all[:3], perm_all[:3]],0),0) # average across all task pairs
-    tasks_hp = np.mean(np.mean([perm_all[3:], perm_all[3:]],0),0) # average across all task pairs
+    tasks_pfc = np.mean(np.mean([perm_all[:3], perm_all_2[:3]],0),0) # average across all task pairs
+    tasks_hp = np.mean(np.mean([perm_all[3:], perm_all_2[3:]],0),0) # average across all task pairs
     perc_all = np.asarray(tasks_pfc - tasks_hp) # differences between PFC and HP 
     
     # Sequence Significance
@@ -345,7 +345,7 @@ def plot(HP, PFC):
     sequence_dif_sig = np.mean(perc_all_seq)
    
     # Generalisation Significance
-    perc_generalisation = [np.percentile(perc_all[:,4,4],95,0), np.percentile(perc_all[:,5,5],95,0), np.percentile(perc_all[:,6,5],95,0)]
+    perc_generalisation = [np.percentile(perc_all[:,4,4],95,0), np.percentile(perc_all[:,5,5],95,0), np.percentile(perc_all[:,6,6],95,0)]
     generalisation_sig = np.mean(perc_generalisation)
 
     labels = ['Correct','Position in Trial Sequence','Port']

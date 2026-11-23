@@ -201,21 +201,19 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                         if choice_state_count == task_1[0]: # first trial is always a forced 
                             prev_choice  = 'forced_state'
     
-                        if event == poke_A_1: # 
-                            if choice_state == True: 
+                        if event == poke_A_1:
+                            if choice_state == True:
                                 prev_choice = 'Poke_A_1' # animal chose A during the choice phase
-                                choice_state = False # indicate the animal made a choice 
-                            elif choice_state == False and  prev_choice == 'Poke_B_1': # animal chose B previously
-                                if event == poke_B_1:
-                                    wrong_count += 1 # record if A poke was after an animal already chose B
-                                        
-                        elif event == poke_B_1 : 
+                                choice_state = False # indicate the animal made a choice
+                            elif choice_state == False and prev_choice == 'Poke_B_1': # animal chose B previously
+                                wrong_count += 1 # record A poke after animal already chose B
+
+                        elif event == poke_B_1:
                             if choice_state == True:
                                 prev_choice = 'Poke_B_1' # animal chose B during the choice phase
-                                choice_state = False # indicate the animal made a choice 
-                            elif choice_state == False and prev_choice == 'Poke_A_1': # animal chose B previously
-                                if event == poke_B_1:
-                                    wrong_count += 1 # record if A poke was after an animal already chose B
+                                choice_state = False # indicate the animal made a choice
+                            elif choice_state == False and prev_choice == 'Poke_A_1': # animal chose A previously
+                                wrong_count += 1 # record B poke after animal already chose A
                         
                         elif event == poke_I_2 or event == poke_I_3 or event == poke_A_2 or event == poke_A_3 or event == poke_B_2 or event == poke_B_3:
                             if event != poke_I_1 and only_A_B == False:
