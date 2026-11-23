@@ -53,7 +53,7 @@ def trials_till_reversal_plot_recordings(experiment):
                 for i, crossing_trial in enumerate(threshold_crossing_trials): 
                     if reversal_number <  12:
                         if i == 0: # first element in the threshold_crossing_trials_list 
-                            reversal_to_threshold[reversal_number] = crossing_trial
+                            reversal_to_threshold[reversal_number] = crossing_trial + 1 # trials 0 to crossing_trial
                         else: # for other than the first thershold in the session calculate the number of trials since block change
                             reversal_to_threshold[reversal_number] = (crossing_trial-reversal_trials[i-1])
                       

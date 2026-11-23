@@ -196,3 +196,29 @@ def rec_pokes(wrong_trial):
 def test_recordings_poke_at_block_boundary():
     assert np.allclose(rec_pokes(4), [0.2, 0, 0, 0])      # last trial of block 1
     assert np.allclose(rec_pokes(5), [0, 0.2, 0, 0])      # first trial of block 2
+
+
+def test_recordings_trials_to_threshold_counts_first_block_fully():
+    from functions import functions_behaviour_rec as fr
+    n = 13 * 10; tl = np.arange(n)
+    block = tl // 10                                        # reversal after every 10 trials
+    prt = ((tl % 10) >= 7).astype(int) * 5                  # countdown starts on the 8th trial of each block
+    s = Session(**{'block': block, 'pre-reversal trials': prt})
+    s.events = [Ev(e) for _ in range(n) for e in ['init_trial']]
+    seen, original = {}, fr.pd.DataFrame.from_dict
+
+    def grab(data):
+        seen['x'] = np.asarray(data['Data'])
+        raise RecCaptured
+    fr.pd.DataFrame.from_dict = staticmethod(grab)
+
+    class Subject:
+        def get_sessions(self):
+            return [s] * 8
+    try:
+        fr.trials_till_reversal_plot_recordings([Subject(), Subject()])
+    except RecCaptured:
+        pass
+    finally:
+        fr.pd.DataFrame.from_dict = original
+    assert np.allclose(seen['x'][:12], 7)                   # every block takes 7 trials, the first included
