@@ -105,3 +105,38 @@ def test_policy_weights_recover_choice_history():
     DM = np.zeros((n, 10)); DM[:, 1] = c; DM[:, 2] = r
     beta = pol.policy_for_GLM({'DM': [[DM]]}, 5)
     assert beta[5] > 2 and np.abs(beta[6:10]).max() < 1            # lag 1 choice dominates
+
+
+def history_session(seed=4, ntr=600):
+    """Choices that depend on the previous choice and on whether it was rewarded."""
+    rng = np.random.default_rng(seed); c = np.zeros(ntr); r = rng.integers(0, 2, ntr).astype(float)
+    for t in range(1, ntr):
+        logit = 2 * (c[t - 1] - 0.5) + 4 * (c[t - 1] - 0.5) * (r[t - 1] - 0.5)
+        c[t] = rng.random() < 1 / (1 + np.exp(-logit))
+    DM = np.zeros((ntr, 10)); DM[:, 1] = c; DM[:, 2] = r; DM[:, 5] = np.repeat([1, 2, 3], ntr // 3)
+    for t, (i, a, b) in PORTS.items():
+        DM[DM[:, 5] == t, 6:9] = a, b, i
+    return DM
+
+
+def test_applied_policy_is_the_fitted_decision_function():
+    from sklearn.linear_model import LogisticRegression
+    DM = history_session(); n = 5; c, r = DM[:, 1], DM[:, 2]
+    X = pol._policy_design(c, r, n)
+    policy = X @ pol.policy_for_GLM({'DM': [[DM]]}, n)
+    fit = LogisticRegression(fit_intercept=False).fit(X, c[n:])
+    assert np.allclose(policy, fit.decision_function(X))
+    loglik = np.mean(c[n:] * policy - np.log1p(np.exp(policy)))
+    assert loglik > np.log(0.5) and np.corrcoef(policy, c[n:])[0, 1] > 0.3
+
+
+def test_policy_regressor_inside_the_glm_matches_the_fitted_policy():
+    """A neuron that follows the fitted policy must load on it with weight 1 in policy_A_B."""
+    DM = history_session(); n = 5
+    beta = pol.policy_for_GLM({'DM': [[DM]]}, n)
+    fr = np.zeros((len(DM), 1, 63))
+    for t in (1, 2, 3):
+        k = np.where(DM[:, 5] == t)[0]
+        fr[k[n:], 0, :] = (pol._policy_design(DM[k, 1], DM[k, 2], n) @ beta)[:, None]
+    for C in pol.policy_A_B({'DM': [[DM]], 'Data': [[fr]]}, n=n, perm=False):
+        assert np.allclose(C[1], 1)

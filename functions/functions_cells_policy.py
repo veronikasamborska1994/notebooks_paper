@@ -46,6 +46,16 @@ def _batch_corrcoef(X, y):
     return numer / denom
 
 
+def _policy_design(choices, reward, n):
+    """Design matrix of the policy model: n-back rewards, choices (A = 1, B = 0), choice x reward interactions, constant.
+
+    Used both to fit the policy weights and to apply them, so the two codings cannot differ.
+    Row t predicts trial t + n. Shape (n_trials - n, 3n + 1).
+    """
+    lags = lambda x: scipy.linalg.toeplitz(x, np.zeros(n))[n-1:-1]
+    return np.hstack([lags(reward), lags(choices), lags((choices-0.5)*(reward-0.5)*2), np.ones((len(choices)-n, 1))])
+
+
 def plot_policy_during_recordings(PFC, HP, n = 12): 
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
     outcomes (not shown) and choice-outcome interactions, Figure 5A.'''
@@ -59,12 +69,8 @@ def plot_policy_during_recordings(PFC, HP, n = 12):
         results_array = []
         for  s, sess in enumerate(dm):        
             DM = dm[s]; choices = DM[:,1]; reward = DM[:,2]
-            previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
-            previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
-            interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] #interactions rewards x choice
-            choices_current = (choices[n:]) # current choices need to start at nth trial
-            ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
-            X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
+            X = _policy_design(choices, reward, n)
+            choices_current = choices[n:] # current choices need to start at nth trial
             model = LogisticRegression(fit_intercept = False) 
             results = model.fit(X,choices_current) # fit logistic regression predicting current choice based on history of behaviour
             results_array.append(results.coef_[0]) # store coefficients
@@ -114,11 +120,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         n_trials, n_neurons, n_timepoints = firing_rates.shape
         choices = DM[:,1]; reward = DM[:,2];  choices_current = choices-0.5
 
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
-        previous_choices = scipy.linalg.toeplitz(0.5-choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
-        interactions = scipy.linalg.toeplitz((((0.5-choices)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
-        ones = np.ones(len(interactions)).reshape(len(interactions),1) # constant
-        X = np.hstack([previous_rewards,previous_choices,interactions,ones]) # design matrix for calculating policy
+        X = _policy_design(choices, reward, n) # design matrix for calculating policy
         policy = np.matmul(X, policy_beh) # calculate policy on each trial
         
         choices_current = choices_current[n:];  reward = reward[n:];  firing_rates = firing_rates[n:] # current choices need to start at nth trial
@@ -189,12 +191,8 @@ def policy_for_GLM(data, n, perm = False):
     results_array = []
     for  s, sess in enumerate(dm):     
         DM = dm[s]; choices = DM[:,1]; reward = DM[:,2];
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
-        previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
-        interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
-        choices_current = (choices[n:]) # current choices need to start at nth trial
-        ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
-        X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
+        X = _policy_design(choices, reward, n)
+        choices_current = choices[n:] # current choices need to start at nth trial
         model = LogisticRegression(fit_intercept = False) 
         results = model.fit(X,choices_current)# fit logistic regression predicting current choice based on history of behaviour
         results_array.append(results.coef_[0]) # store coefficients
@@ -227,11 +225,7 @@ def policy_A_B(data, n = 10, perm = True):
         for i in [1, 2, 3]:
             task_index = np.where(taskid == i)[0]
             rewards_task = reward_current[task_index]; choices_task = choices_current[task_index]
-            previous_rewards_task = scipy.linalg.toeplitz(rewards_task, np.zeros(n))[n-1:-1]
-            previous_choices_task = scipy.linalg.toeplitz(0.5-choices_task, np.zeros(n))[n-1:-1]
-            interactions_task = scipy.linalg.toeplitz((((0.5-choices_task)*(rewards_task-0.5))*2), np.zeros(n))[n-1:-1]
-            ones = np.ones(len(interactions_task)).reshape(len(interactions_task), 1)
-            X = np.hstack([previous_rewards_task, previous_choices_task, interactions_task, ones])
+            X = _policy_design(choices[task_index], rewards_task, n)
             policy = np.matmul(X, policy_beh)
             rewards_task = rewards_task[n:]; choices_task = choices_task[n:]
             ones_task = np.ones(len(choices_task))
