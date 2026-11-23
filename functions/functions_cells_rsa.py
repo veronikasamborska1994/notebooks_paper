@@ -20,7 +20,7 @@ from itertools import combinations
 from math import factorial
 import palettable
 from tqdm.auto import trange
-from functions.helper_functions import task_ind, _cpd, animal_exp_permute
+from functions.helper_functions import task_ind, _cpd, animal_exp_permute, exact_perm_threshold
 
 
 # ---------------------------------------------------------------------------
@@ -416,8 +416,13 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
     signed_diffs[:, :, re] = all_pfc_perm[:, :, re] - all_hp_perm[:, :, re]
     signed_diffs[:, :, ch_i] = all_pfc_perm[:, :, ch_i] - all_hp_perm[:, :, ch_i]
     max_per_perm = np.max(signed_diffs, axis=0)  # (perm_n, n_features) - max over time per permutation
-    cpd_p_val_mult_compar_95 = np.percentile(max_per_perm, 95, axis=0)
-    cpd_p_val_mult_compar_99 = np.percentile(max_per_perm, 99, axis=0)  # P < 0.01
+    if animal_perm:
+        # only 35 animal splits: use exact rank-based thresholds (P < .01 cannot be reached)
+        cpd_p_val_mult_compar_95 = exact_perm_threshold(max_per_perm, 0.05, axis=0)
+        cpd_p_val_mult_compar_99 = exact_perm_threshold(max_per_perm, 0.01, axis=0)
+    else:
+        cpd_p_val_mult_compar_95 = np.percentile(max_per_perm, 95, axis=0)
+        cpd_p_val_mult_compar_99 = np.percentile(max_per_perm, 99, axis=0)  # P < 0.01
 
     if not dlc:
         space_sig = np.where(diff_space > cpd_p_val_mult_compar_95[prtd])[0]

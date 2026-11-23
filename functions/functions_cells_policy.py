@@ -23,7 +23,7 @@ from sklearn.linear_model import LinearRegression
 from itertools import combinations
 from tqdm.auto import trange
 from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed,
-    animal_exp_permute, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
+    animal_exp_permute, exact_perm_threshold, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
     XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS, TIME_INDICES, TIME_INDICES_DLC)
 
 
@@ -442,15 +442,20 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
     # Max-statistic correction for B-A difference: max across anchors and time per permutation, then percentile
     n_p = len(diff_PFC_HP_perm)
     max_ba_per_perm = np.max(diff_PFC_HP_perm.reshape(n_p, -1), axis=1)  # (perm_n,)
-    _95th_ba = np.percentile(max_ba_per_perm, 95)
+    # animal permutations: only 35 splits, so use exact rank-based thresholds (P < .01 cannot be reached)
+    if animal_perm:
+        _thr = exact_perm_threshold
+    else:
+        _thr = lambda null, alpha: np.percentile(null, 100*(1 - alpha))
+    _95th_ba = _thr(max_ba_per_perm, 0.05)
     indx_b_a_diff = np.where(diff_PFC_HP > _95th_ba)
 
     # Max-statistic correction for A and B separately
     # PFC_HP_perm shape: (perm_n, 2, 3, n_timepoints) — 2=A/B, 3=init/ch/rew
     max_a_per_perm = np.max(PFC_HP_perm[:, 0].reshape(n_p, -1), axis=1)  # (perm_n,)
     max_b_per_perm = np.max(PFC_HP_perm[:, 1].reshape(n_p, -1), axis=1)
-    _95th_a = np.percentile(max_a_per_perm, 95); _99th_a = np.percentile(max_a_per_perm, 99)
-    _95th_b = np.percentile(max_b_per_perm, 95); _99th_b = np.percentile(max_b_per_perm, 99)
+    _95th_a = _thr(max_a_per_perm, 0.05); _99th_a = _thr(max_a_per_perm, 0.01)
+    _95th_b = _thr(max_b_per_perm, 0.05); _99th_b = _thr(max_b_per_perm, 0.01)
 
     # real A/B difference between CA1 and PFC on A and B trials
     a_b_real = task_mean_A_B[:,3:,:] - task_mean_A_B[:,:3,:] # PFC - CA1
@@ -474,13 +479,13 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
                     # A: P < .05 (small dots) and P < .01 (large dots)
                     p_a_05 = significant_diff_a_05[1][np.where(significant_diff_a_05[0] == per)[0]]
                     p_a_01 = significant_diff_a_01[1][np.where(significant_diff_a_01[0] == per)[0]]
-                    axs[per].plot(p_a_05, np.ones(p_a_05.shape)*ymax + 0.02, '.', markersize = 2, color= 'green')
-                    axs[per].plot(p_a_01, np.ones(p_a_01.shape)*ymax + 0.02, '.', markersize = 4, color= 'green', label = 'A PFC vs CA1 < .01')
+                    axs[per].plot(p_a_05, np.ones(p_a_05.shape)*ymax + 0.02, '.', markersize = 2, color= 'green', label = 'A PFC vs CA1 < .05' if animal_perm else None)
+                    axs[per].plot(p_a_01, np.ones(p_a_01.shape)*ymax + 0.02, '.', markersize = 4, color= 'green', label = None if animal_perm else 'A PFC vs CA1 < .01')
                     # B: P < .05 (small dots) and P < .01 (large dots)
                     p_b_05 = significant_diff_b_05[1][np.where(significant_diff_b_05[0] == per)[0]]
                     p_b_01 = significant_diff_b_01[1][np.where(significant_diff_b_01[0] == per)[0]]
-                    axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink')
-                    axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = 'B PFC vs CA1 < .01')
+                    axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink', label = 'B PFC vs CA1 < .05' if animal_perm else None)
+                    axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = None if animal_perm else 'B PFC vs CA1 < .01')
                     # B-A difference
                     p_a_b = indx_b_a_diff[1][np.where(indx_b_a_diff[0] == per)[0]]
                     axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
@@ -561,8 +566,12 @@ def permute_sessions_diagonal(HP, PFC, c_1 = 1, n = 11, perm_n = 2, dlc = False,
 
     diff_all_a = [all_shuffle_a[i][1] - all_shuffle_a[i][0] for i in range(len(all_shuffle_a))]
     diff_all_b = [all_shuffle_b[i][1] - all_shuffle_b[i][0] for i in range(len(all_shuffle_b))]
-    _all_95_a = np.percentile(diff_all_a, 95)
-    _all_95_b = np.percentile(diff_all_b, 95)
+    if animal_perm: # only 35 animal splits: exact rank-based threshold
+        _all_95_a = exact_perm_threshold(diff_all_a, 0.05)
+        _all_95_b = exact_perm_threshold(diff_all_b, 0.05)
+    else:
+        _all_95_a = np.percentile(diff_all_a, 95)
+        _all_95_b = np.percentile(diff_all_b, 95)
     return diff_all_a, diff_all_b, _all_95_a, _all_95_b
     
  

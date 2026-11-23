@@ -17,7 +17,7 @@ from palettable import wesanderson as wes
 from itertools import combinations
 from math import factorial
 from tqdm.auto import trange
-from functions.helper_functions import _CPD, precompute_CPD, CPD_from_precomputed, animal_exp_permute, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
+from functions.helper_functions import _CPD, precompute_CPD, CPD_from_precomputed, animal_exp_permute, exact_perm_threshold, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
 
 
 def _one_perm_glm(all_subjects_DM, all_subjects_fr, n_HP_sessions):
@@ -200,8 +200,13 @@ def GLM_perm_across_regions(HP,PFC, perm = 1000, animal_perm = False):
             diff_perm = np.stack(results, 0)
     # Max-statistic correction: max over time per permutation, then percentile
     max_per_perm = np.max(diff_perm, axis=1)  # (perm, n_predictors)
-    p_95 = np.percentile(max_per_perm, 95, axis=0)  # (n_predictors,)
-    p_99 = np.percentile(max_per_perm, 99, axis=0)
+    if animal_perm == True:
+        # only 35 animal splits: use exact rank-based thresholds (P < .01 cannot be reached)
+        p_95 = exact_perm_threshold(max_per_perm, 0.05, axis=0)
+        p_99 = exact_perm_threshold(max_per_perm, 0.01, axis=0)
+    else:
+        p_95 = np.percentile(max_per_perm, 95, axis=0)  # (n_predictors,)
+        p_99 = np.percentile(max_per_perm, 99, axis=0)
     real_diff = np.abs(np.mean(cpd_PFC,0) - np.mean(cpd_HP,0))
     return p_95, p_99, real_diff
     
@@ -327,8 +332,11 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
             if region == 0:
                 axs[pred].plot(t05, np.ones(t05.shape)*ymax + offset, '.', markersize = 2, color = c[region])
                 axs[pred].plot(t001, np.ones(t001.shape)*ymax + offset, '.', markersize = 4, color = c[region], label = label_region[region] + ' ' + '< .01')
-                axs[pred].plot(index_95, np.ones(index_95.shape)*ymax + offset2, '.', markersize = 2, color = 'grey')
-                axs[pred].plot(index_99, np.ones(index_99.shape)*ymax + offset2, '.', markersize = 4, color = 'grey',label = '< .01 diff PFC and HP')
+                if animal_perm == True: # exact test on 35 animal splits: only P < .05 (= 1/35) can be reached
+                    axs[pred].plot(index_95, np.ones(index_95.shape)*ymax + offset2, '.', markersize = 2, color = 'grey', label = '< .05 diff PFC and HP (animal perm)')
+                else:
+                    axs[pred].plot(index_95, np.ones(index_95.shape)*ymax + offset2, '.', markersize = 2, color = 'grey')
+                    axs[pred].plot(index_99, np.ones(index_99.shape)*ymax + offset2, '.', markersize = 4, color = 'grey',label = '< .01 diff PFC and HP')
                 axs[pred].set_xticks(_xticks)
                 axs[pred].set_xticklabels(XTICK_LABELS)
                 axs[pred].set_xlabel('Time in Trial (s)')

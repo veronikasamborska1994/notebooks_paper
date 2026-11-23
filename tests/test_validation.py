@@ -237,6 +237,27 @@ class TestBatchCorrcoef:
 # Run as standalone script
 # ---------------------------------------------------------------------------
 
+class TestExactPermThreshold:
+    """Tests for the exact threshold used with the 35 animal splits."""
+
+    def test_35_splits(self):
+        from functions.helper_functions import exact_perm_threshold
+        null = np.random.RandomState(0).randn(35)
+        s = np.sort(null)
+        thr = exact_perm_threshold(null, 0.05)
+        assert thr == s[-2], "threshold should be the 2nd largest of 35"
+        assert s[-1] > thr, "largest split (P = 1/35) should be significant at .05"
+        assert not s[-2] > thr, "2nd largest split (P = 2/35) should not be significant"
+        assert np.isinf(exact_perm_threshold(null, 0.01)), "P < .01 cannot be reached with 35 splits"
+
+    def test_axis_and_large_n(self):
+        from functions.helper_functions import exact_perm_threshold
+        null = np.random.RandomState(1).randn(35, 4)
+        assert exact_perm_threshold(null, 0.05, axis=0).shape == (4,)
+        big = np.random.RandomState(2).randn(5000)
+        assert abs(exact_perm_threshold(big, 0.05) - np.percentile(big, 95)) < 0.01
+
+
 if __name__ == '__main__':
     print("Running validation tests...\n")
     n_pass = 0

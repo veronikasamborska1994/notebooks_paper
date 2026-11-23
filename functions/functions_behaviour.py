@@ -417,7 +417,7 @@ def out_of_sequence(experiment, first_task_only=False):
     
     # plot mean across subjects 
     mean_bad_pokes_subj = np.mean(mean_bad_pokes_rev, axis = 0)
-    std_bad_pokes = np.std(mean_bad_pokes_subj, axis = 0)
+    std_bad_pokes = np.std(mean_bad_pokes_rev, axis = 0) # s.d. across subjects for each problem
     sample_size = np.sqrt(n_subjects)
     std_err = std_bad_pokes/sample_size
     x_pos = np.arange(len(mean_bad_pokes_subj))

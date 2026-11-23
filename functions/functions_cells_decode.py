@@ -20,7 +20,7 @@ from itertools import combinations
 import pandas as pd
 import palettable 
 from scipy import io
-from functions.helper_functions import task_ind, animal_exp_permute, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL
+from functions.helper_functions import task_ind, animal_exp_permute, exact_perm_p, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL
 
 def import_cell_data(path):
     
@@ -331,9 +331,10 @@ def plot(HP, PFC):
     perm_all = np.asarray(perm_all); perm_all_2 = np.asarray(perm_all_2)
 
     ### Init B task (task 2 --> 3; 3 --> 2)
-    perm_hp = np.mean([perm_all[5],perm_all_2[5]],0); perm_pfc = np.mean([perm_all[2],perm_all_2[2]],0)
-    perm_sp_hp_pfc = np.asarray(perm_hp- perm_pfc)
-    IB_perm = np.percentile(perm_sp_hp_pfc[:,0,4],95,0);
+    # same statistic as for the real data: cell [0,4] for task 2 --> 3 and cell [4,0] for task 3 --> 2
+    perm_hp_b = np.mean([perm_all[5][:,0,4], perm_all_2[5][:,4,0]],0)
+    perm_pfc_b = np.mean([perm_all[2][:,0,4], perm_all_2[2][:,4,0]],0)
+    IB_null = perm_hp_b - perm_pfc_b # one value per animal split
     
     # Significance for other decoding patterns averaged across all tasks 
     tasks_pfc = np.mean(np.mean([perm_all[:3], perm_all_2[:3]],0),0) # average across all task pairs
@@ -341,21 +342,21 @@ def plot(HP, PFC):
     perc_all = np.asarray(tasks_pfc - tasks_hp) # differences between PFC and HP 
     
     # Sequence Significance
-    perc_all_seq = [np.percentile(perc_all[:,4,1],95,0), np.percentile(perc_all[:,5,2],95,0), np.percentile(perc_all[:,6,3],95,0)]
-    sequence_dif_sig = np.mean(perc_all_seq)
+    # same statistic as for the real data: mean of the three cells within each permutation
+    perc_all_seq = np.mean([perc_all[:,4,1], perc_all[:,5,2], perc_all[:,6,3]],0)
    
     # Generalisation Significance
-    perc_generalisation = [np.percentile(perc_all[:,4,4],95,0), np.percentile(perc_all[:,5,5],95,0), np.percentile(perc_all[:,6,6],95,0)]
-    generalisation_sig = np.mean(perc_generalisation)
+    perc_generalisation = np.mean([perc_all[:,4,4], perc_all[:,5,5], perc_all[:,6,6]],0)
 
     labels = ['Correct','Position in Trial Sequence','Port']
-    sign_print = [generalisation > generalisation_sig, seq_real > sequence_dif_sig,IB_real > IB_perm]
-    for sg, sig in enumerate(sign_print):
-        if sig == True:
-            sign_text = 'p < 0.05'
-        else:
-            sign_text = 'NS'
-        print(labels[sg]+ ' ' + 'decoding' + ' ' + sign_text)
+    # exact one-sided P = (number of the 35 animal splits with a difference >= the real one) / 35.
+    # An interpolated 95th percentile would let a difference ranked 2nd of 35 (P = 0.057) pass.
+    real_stats = [generalisation, seq_real, IB_real]
+    null_stats = [perc_generalisation, perc_all_seq, IB_null]
+    for sg, label in enumerate(labels):
+        p_exact, rank = exact_perm_p(real_stats[sg], null_stats[sg])
+        sign_text = 'p < 0.05' if p_exact <= 0.05 else 'NS'
+        print(label + ' ' + 'decoding' + ' ' + sign_text + ' (exact p = ' + str(rank) + '/' + str(len(null_stats[sg])) + ' = ' + str(np.round(p_exact,3)) + ')')
 
     
     # plot Correct, Position in Sequence and Port decoding patterns 
