@@ -140,3 +140,32 @@ def test_policy_regressor_inside_the_glm_matches_the_fitted_policy():
         fr[k[n:], 0, :] = (pol._policy_design(DM[k, 1], DM[k, 2], n) @ beta)[:, None]
     for C in pol.policy_A_B({'DM': [[DM]], 'Data': [[fr]]}, n=n, perm=False):
         assert np.allclose(C[1], 1)
+
+
+def _coefs(shared_a, shared_b, seed=5, n_neurons=400, nt=63):
+    """Policy coefficients per task (predictor x neuron x time); shared_* sets the cross-task correlation."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for shared in (shared_a, shared_b):
+        common = rng.normal(size=(n_neurons, 1))
+        out += [np.stack([np.zeros((n_neurons, nt)),
+                          np.sqrt(shared) * common + np.sqrt(1 - shared) * rng.normal(size=(n_neurons, nt))]) for _ in range(3)]
+    return out                                             # C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b
+
+
+def test_b_minus_a_direction():
+    """CA1 with a larger A - B gap than PFC must give a positive '(B - A) PFC - CA1' difference, and the reverse a negative one."""
+    gap, none = _coefs(0.8, 0.1), _coefs(0.5, 0.5)
+    diff, _ = pol._compute_perm_result(*gap, *none, 1, [24, 35, 42])
+    assert np.all(diff > 0.2)
+    diff, _ = pol._compute_perm_result(*none, *gap, 1, [24, 35, 42])
+    assert np.all(diff < -0.2)
+
+
+def test_policy_slice_null_identity_split_equals_real_split():
+    hp, pfc = data()
+    diff, pfc_hp = pol.permute_policy_A_B(hp, pfc, perm_n=1, animal_perm=True)
+    assert len(diff) == 35
+    real, real_ab = pol._compute_perm_result(*pol.policy_A_B(hp, n=11, perm=False), *pol.policy_A_B(pfc, n=11, perm=False), 1, [24, 35, 42])
+    assert np.allclose(diff[-1], real) and np.allclose(pfc_hp[-1], real_ab)
+    assert np.allclose(real, (np.asarray(real_ab)[1] - np.asarray(real_ab)[0]))
