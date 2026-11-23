@@ -169,7 +169,7 @@ steps = [
 
     ("Fig 5D-E | SVD between brains",
      "fig5de_svd_brains",
-     lambda: SVD.svd_between_brains(HP, PFC)),
+     lambda: SVD.svd_between_brains(HP_dlc, PFC_dlc)),
 
     ("Fig 5D-H | SVD main figure (session perms)",
      "fig5dh_svd_main",
