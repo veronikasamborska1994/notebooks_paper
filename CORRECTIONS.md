@@ -58,6 +58,9 @@ All other conclusions are unchanged; several statistics change in value.
 
 ## Choices kept as in the original code
 
+- Forced-choice trials (a quarter of all trials, column 3 of the trial table) are included in all neural analyses, as in the original
+  code; kept by the author's decision (24 November 2026). Excluding them in a quick check changes several results (for example
+  Fig 4g Correct P = 2/35 to 10/35, Extended Data Fig 5c B 1/35 to 3/35).
 - The decoder uses scikit-learn's default RBF kernel, as for the published figure.
 - The policy regressor is the linear score (log-odds) of the logistic model.
 
