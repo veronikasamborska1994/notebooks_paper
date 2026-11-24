@@ -56,50 +56,29 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 
 All other conclusions are unchanged; several statistics change in value.
 
-## Choices kept as in the original code
-
-- Forced-choice trials (a quarter of all trials, column 3 of the trial table) are included in all neural analyses, as in the original
-  code; kept by the author's decision (24 November 2026). Excluding them in a quick check changes several results (for example
-  Fig 4g Correct P = 2/35 to 10/35, Extended Data Fig 5c B 1/35 to 3/35).
-- The decoder uses scikit-learn's default RBF kernel, as for the published figure.
-- The policy regressor is the linear score (log-odds) of the logistic model.
+Forced-choice trials (a quarter of all trials) are included in all neural analyses, as in the original code. In a quick check,
+excluding them changes several results (Fig 4g Correct P = 2/35 to 10/35; Extended Data Fig 5c B 1/35 to 3/35).
 
 ## For discussion: the Fig 4g Port bar
 
-**What was wrong.** In layouts 2 and 3 the initiation port of layout 2 (I2) is the B port of layout 3 (B3). The Port bar should
-count I2 and B3 being confused. The original code read [I, B] from the decoder trained on 2 and tested on 3, and [B, I] from the
-one trained on 3 and tested on 2, which are I3 called B2 and B2 called I3: two different ports. For PFC, the matrix trained on 3
-was also used twice (bug 5), so the printed PFC bar is the mean of one same-port cell (40) and one different-port cell (15).
+In layouts 2 and 3 the initiation port of layout 2 (I2) is the B port of layout 3 (B3). The Port bar should count I2 and B3 being
+confused. The original code counted I3 and B2 instead, which are different ports (for PFC one of the two cells, because of bug 5).
 
 | Port bar (%) | CA1 | PFC | CA1 > PFC |
 |---|---|---|---|
-| Original code (printed) | 68.1 | 27.1 | printed as P < 0.05 |
-| Original cells, bug 5 fixed (different ports) | 68.1 | 13.5 | 1/35 |
-| Same port (I2 and B3, B choice), final | 44.4 | 51.0 | 23/35 |
+| Printed | 68.1 | 27.1 | P < 0.05 |
+| Same port (I2 and B3), final | 44.4 | 51.0 | 23/35 |
 
-So the sentence that CA1 "predominantly decoded to the same physical port" is not supported by Fig 4g. Fig 4e (RSA Port) and
-Extended Data Fig 4 do not use these cells. The bar is a weak estimate: last six trials per state, two bins around each poke, RBF kernel.
+So Fig 4g does not support "CA1 predominantly decoded to the same physical port". Fig 4e and Extended Data Fig 4 do not use these cells.
 
-**New post hoc analysis, not in the paper** (`functions/functions_cells_port.py`, `figures/posthoc_port_over_time.png`).
-A linear decoder of three states (initiation, A, B) with 20 random trials per state and session (12 for rewarded trials),
-20 draws, all 81 sessions, chance 33.3%, the A/B window moved from the choice poke past the outcome.
+A new post hoc analysis (`figures/posthoc_port_over_time.png`, linear decoder, all 81 sessions) follows the port over time.
+CA1 / PFC in %, chance 33; P of CA1 > PFC over the 35 animal splits (smallest possible 0.029):
 
-| A/B window | Same port, CA1 / PFC | Same role, CA1 / PFC | Different ports, CA1 / PFC |
+| A/B window | Same port | Same role | Different ports (control) |
 |---|---|---|---|
-| Choice poke (bins 34-35) | 72.9 / 63.0 (P = 0.200) | 18.1 / 20.8 | 64.2 / 47.6 (P = 0.114) |
-| Bins 40-41 | 75.1 / 36.2 (P = 0.029) | 20.1 / 44.8 | 56.5 / 23.1 (P = 0.029) |
-| Bins 50-51 | 51.0 / 14.8 (P = 0.029) | 34.0 / 58.5 | 39.5 / 16.3 (P = 0.057) |
-| Rewarded, choice to outcome (bins 35-41) | 78.2 / 44.1 (P = 0.029) | 17.9 / 34.0 | 66.8 / 24.6 (P = 0.029) |
+| Choice poke | 72.9 / 63.0 (P = 0.200) | 18.1 / 20.8 | 64.2 / 47.6 |
+| Rewarded, choice to outcome | 78.2 / 44.1 (P = 0.029) | 17.9 / 34.0 | 66.8 / 24.6 (P = 0.029) |
 
-P is the exact one-sided P of CA1 > PFC over 35 animal splits, smallest possible 1/35 = 0.029. Over the time course (max-statistic):
-same port P = 0.029, different ports P = 0.029, same port minus different ports P = 0.286; same role PFC > CA1 P = 0.171.
-
-- At the choice poke both regions represent the port. After it, the same-port score falls in PFC and the same-role score rises;
-  CA1 keeps the port. This agrees with Fig 4e and Extended Data Fig 4.
-- **It does not isolate the shared port.** CA1 is also above PFC for two different ports, and the difference between the two is not
-  larger in CA1 (P = 0.286). CA1 may represent location so that neighbouring ports look alike; that was not tested.
-- The same question with the Fig 4g decoder (RBF, last six trials, mean of bins 34-43, rewarded trials) goes the same way without reaching significance
-  (same port, 7 states: CA1 19.4, PFC 9.4, P = 12/35).
-- The window and the decoder were chosen after seeing the Fig 4g result, after trying several others. The P values are not corrected for that.
-- Open question for the authors: does "2 -> 3" in the printed Fig 4f mean actual -> predicted layout (then the labels and the
-  caption agree with the same-port cells), or train -> test layout (how the original code used it)?
+At the poke both regions represent the port; afterwards CA1 keeps it and PFC moves toward the role. This does not isolate the shared
+port: CA1 is also above PFC for two different ports, and the difference between the two is not larger in CA1 (P = 0.286). The window
+and decoder were chosen after seeing the Fig 4g result, and the Fig 4g decoder itself shows the same direction without significance.
