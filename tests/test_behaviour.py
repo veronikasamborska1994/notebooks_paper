@@ -227,3 +227,16 @@ def test_recordings_trials_to_threshold_counts_first_block_fully():
 def test_rewarded_streak_resets_on_first_error():
     from functions.functions_behaviour_rec import rewarded_streak
     assert list(rewarded_streak([1, 1, 1, 0, 1, 1, 0, 0, 1])) == [0, 1, 2, 3, 0, 1, 2, 0, 0]
+
+
+def test_fig1f_uses_sessions_with_a_single_reversal():
+    # each session has one reversal; both directions are needed (A to B and B to A)
+    def one_reversal(first_state):
+        block = np.r_[np.zeros(30, int), np.ones(30, int)]
+        state = (first_state + block) % 2
+        return Session(block=block, forced_trial=np.zeros(60, int), state=state, choices=state.copy())
+    fb.plt.close('all')
+    fb.meta_learning_reversals(Experiment([one_reversal(0), one_reversal(1)]))
+    for line in fb.plt.gca().get_lines()[:2]:
+        assert np.allclose(line.get_ydata(), np.r_[np.zeros(10), np.ones(10)])
+    fb.plt.close('all')

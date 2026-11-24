@@ -221,7 +221,7 @@ def meta_learning_reversals(experiment):
             state_around_block = []; choice_around_block = []
             block_transitions_id = np.where(block_transitions == 1)[0]
                                         
-            if len(block_transitions_id) > 1: # if block transition happened during the session
+            if len(block_transitions_id) > 0: # if block transition happened during the session
                 for b in block_transitions_id:
                     if b > tr and (b + 1 + tr) <= len(state): # only take blocks for which all 10 post and 10 pre reversal trials exist in a single session
                         state_around_block.append(state[b + 1 - tr: b + 1 + tr]) # b is the last trial of the old block, so index tr is the first trial of the new one
