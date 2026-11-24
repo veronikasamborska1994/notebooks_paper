@@ -43,11 +43,12 @@ TASK_PAIRS = {1: (1, 2), 2: (1, 3), 3: (2, 3)}   # task_test -> (task x, task y)
 # task 2 / testing on task 3 and for training on task 3 / testing on task 2.
 # In all 81 recorded sessions the initiation port of task 2 (DM column 8) is the B port of task 3,
 # and the initiation port of task 3 is never the B port of task 2. The cells in which the true and
-# the predicted state share a physical port are therefore B choice -> Initiation when trained on
-# task 2 and tested on task 3, and Initiation -> B choice for the reverse.
-PORT_CELLS_SAME_PORT = ((4, 0), (0, 4))
+# the predicted state share a physical port are therefore B choice or B reward -> Initiation when
+# trained on task 2 and tested on task 3, and Initiation -> B choice or B reward for the reverse.
+# B no-reward is left out because the animal has already left the port.
+PORT_CELLS_SAME_PORT = (((4, 0), (5, 0)), ((0, 4), (0, 5)))
 # Cells used for the printed figure: they compare two different physical ports.
-PORT_CELLS_PUBLISHED = ((0, 4), (4, 0))
+PORT_CELLS_PUBLISHED = (((0, 4),), ((4, 0),))
 
 MIN_TRIALS = 10         # a session is used if every choice x outcome x task has more trials than this
 BIN_INIT, BIN_CHOICE, BIN_REWARD = 24, 35, 42
@@ -148,10 +149,11 @@ def decoding_scores(m1, m2, same_port=True):
     """Per-animal Correct, Position and Port scores. m1, m2: (pair, animal, 7, 7)."""
     m1 = np.asarray(m1); m2 = np.asarray(m2)
     av = np.mean([m1, m2], 0).mean(0)
-    (r1, c1), (r2, c2) = PORT_CELLS_SAME_PORT if same_port else PORT_CELLS_PUBLISHED
+    cells_1, cells_2 = PORT_CELLS_SAME_PORT if same_port else PORT_CELLS_PUBLISHED
+    port = [m1[2][:, r, c] for r, c in cells_1] + [m2[2][:, r, c] for r, c in cells_2]
     return {'Correct': np.mean([av[:, i, i] for i in (4, 5, 6)], 0),
             'Position in Trial Sequence': np.mean([av[:, 4, 1], av[:, 5, 2], av[:, 6, 3]], 0),
-            'Port': np.mean([m1[2][:, r1, c1], m2[2][:, r2, c2]], 0)}
+            'Port': np.mean(port, 0)}
 
 
 def animal_permutation_null(hp, pfc, direction):
