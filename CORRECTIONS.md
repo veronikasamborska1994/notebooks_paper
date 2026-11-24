@@ -37,7 +37,7 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 ## Results that change
 
 - Fig 4g, Port: with the cells that share a physical port, CA1 44.4% and PFC 51.0%
-  (P = 23/35 = 0.657). `dec.plot(HP, PFC, same_port=False)` reproduces the printed bars.
+  (P = 23/35 = 0.657). `dec.plot(HP, PFC, same_port=False)` uses the printed cells (with bug 5 fixed: PFC 13.5%; the original code gave PFC 27.1%, CA1 68.1%).
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
   bins remain, and the A versus B difference is a single bin.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
