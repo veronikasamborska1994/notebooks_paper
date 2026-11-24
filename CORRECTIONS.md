@@ -26,7 +26,7 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 | 17 | Decoding null was not built from the same quantity as the observed difference | Fig 4g |
 | 18 | The same error bar was drawn on every problem | Fig 1g |
 | 19 | The Port bar averaged the confusion-matrix cells that compare different physical ports | Fig 4g |
-| 20 | The reversal window started one trial early | Fig 1f |
+| 20 | The reversal window started one trial early; sessions with a single reversal were left out, although every reversal with 10 trials on each side qualifies | Fig 1f (final: t(8) = -8.61, p < .001) |
 | 21 | Trials to threshold were carried over incorrectly across sessions; now every trial since the last reversal is counted | Fig 1e; Ext 1a |
 | 22 | Out-of-sequence poke counts were stored one trial late and blocks started on the last trial of the old block | Fig 1g, h; Ext 1b; Ext 2d-h |
 | 23 | The first block of each recording session was counted one trial short | Ext 2a-c |
@@ -50,5 +50,4 @@ All other conclusions are unchanged; several statistics change in value.
 ## Choices kept as in the original code
 
 - The decoder uses scikit-learn's default RBF kernel, as for the published figure.
-- Fig 1f uses only sessions with more than one reversal.
 - The policy regressor is the linear score (log-odds) of the logistic model.
