@@ -2,6 +2,10 @@
 
 Code for reproducing all figures in [Samborska, Butler, Walton, Behrens & Akam (2022) *Nature Neuroscience*](https://doi.org/10.1038/s41593-022-01149-8).
 
+## Corrections
+
+The analysis code has been corrected since publication. [CORRECTIONS.md](CORRECTIONS.md) lists each bug, the panels it affects and the results that change.
+
 ## Data
 
 Download behavioural and neural data from [figshare](https://doi.org/10.6084/m9.figshare.19773334) and place it in a local folder.
