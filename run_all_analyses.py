@@ -2,9 +2,10 @@
 """Run all analyses and save figures as SVG + PNG.
 
 Usage:
-    python run_all_analyses.py [--perms N] [--data-path PATH] [--output-dir DIR]
+    python run_all_analyses.py [--perms N] [--data-path PATH] [--output-dir DIR] [--seed N]
 
-Defaults: 5000 permutations, figures saved to ./figures/
+Defaults: 5000 permutations, random seed 0, figures saved to ./figures/
+The random number generator is reset to the seed before every step, so each figure is reproduced exactly.
 """
 
 import argparse
@@ -15,6 +16,7 @@ import time
 import matplotlib
 matplotlib.use('Agg')  # non-interactive backend for script mode
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
 
 # ---------------------------------------------------------------------------
@@ -26,11 +28,13 @@ parser.add_argument('--data-path', type=str,
                     default='/Users/veronikasamborska/Desktop/paper_nn_code_data/data_share/',
                     help='Path to data folder')
 parser.add_argument('--output-dir', type=str, default='figures', help='Output directory for figures')
+parser.add_argument('--seed', type=int, default=0, help='Random seed, reset before every step (default: 0)')
 args = parser.parse_args()
 
 PERMS = args.perms
 DATA_PATH = args.data_path
 OUTPUT_DIR = args.output_dir
+SEED = args.seed
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -38,11 +42,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # ---------------------------------------------------------------------------
 def save_figures(prefix, figs_before):
     """Save any new figures that appeared since figs_before snapshot."""
-    figs_after = set(plt.get_fignums())
-    new_figs = sorted(figs_after - figs_before)
-    if not new_figs:
-        # If no new figures, save whatever is current
-        new_figs = sorted(figs_after - figs_before) if figs_after else []
+    new_figs = sorted(set(plt.get_fignums()) - figs_before)
     saved = []
     for i, fig_num in enumerate(new_figs):
         fig = plt.figure(fig_num)
@@ -58,6 +58,7 @@ def save_figures(prefix, figs_before):
 def run_step(description, prefix, func, *a, **kw):
     """Run an analysis step, save figures, print timing."""
     figs_before = set(plt.get_fignums())
+    np.random.seed(SEED)  # same seed at the start of every step: each figure can be reproduced on its own
     t0 = time.time()
     func(*a, **kw)
     elapsed = time.time() - t0
@@ -83,7 +84,6 @@ from functions import functions_cells_policy as pol
 from functions import functions_cells_ext as ext
 from functions import plot_neurons as plot_n
 from scipy import io
-import numpy as np
 
 # ---------------------------------------------------------------------------
 # Load data
@@ -256,6 +256,7 @@ steps = [
 # ---------------------------------------------------------------------------
 print(f"Running {len(steps)} analyses with {PERMS} permutations...\n")
 
+failed = []
 pbar = tqdm(steps, desc="Analyses", unit="step", ncols=100)
 for desc, prefix, func in pbar:
     pbar.set_description(desc)
@@ -263,7 +264,13 @@ for desc, prefix, func in pbar:
         run_step(desc, prefix, func)
     except Exception as e:
         tqdm.write(f"  !! ERROR in {desc}: {e}")
+        failed.append(desc)
         plt.close('all')
     gc.collect()
 
+if failed:
+    print(f"\n{len(failed)} of {len(steps)} steps failed:")
+    for desc in failed:
+        print(f"  {desc}")
+    sys.exit(1)
 print(f"\nDone! All figures saved to {OUTPUT_DIR}/")

@@ -159,7 +159,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     # plot cpds and significance levels
     for c,cpd in enumerate(cpds): 
         # Max-statistic correction: max over time per permutation, then percentile
-        perm_means = np.mean(cpds_perms[c], 1)  # average across sessions: (perm, n_timepoints, n_predictors)
+        perm_means = np.mean(cpds_perms[c], 1)  # average across neurons: (perm, n_timepoints, n_predictors)
         max_over_time = np.max(perm_means, axis=1)  # max over time: (perm, n_predictors)
         values_95 = np.percentile(max_over_time, 95, axis=0)  # (n_predictors,)
         values_99 = np.percentile(max_over_time, 99, axis=0)
