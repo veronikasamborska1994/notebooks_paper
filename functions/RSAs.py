@@ -5,8 +5,8 @@ trial-type pairs should be grouped together under a given hypothesis.
 
 The 15 trial types are ordered as:
   [A_rew_T1, A_nrew_T1, A_rew_T2, A_nrew_T2, A_rew_T3, A_nrew_T3,
-   Init_T1, Init_T2, Init_T3,
-   B_rew_T1, B_nrew_T1, B_rew_T2, B_nrew_T2, B_rew_T3, B_nrew_T3]
+   Init_T1, Init_T3, Init_T2,
+   B_rew_T3, B_nrew_T3, B_rew_T2, B_nrew_T2, B_rew_T1, B_nrew_T1]
 """
 
 import numpy as np
@@ -21,19 +21,19 @@ def RSA_physical_rdm():
     """Physical grouping RDM: groups by port identity.
 
     Groups: A choices (6), Initiations 1&3 (2), Initiation 2 & B task 3 (3),
-    B task 1 (2), B task 2 (2).
+    B task 2 (2), B task 1 (2).
     """
     a = _zeros_15x15(6)
     i1_i3 = _zeros_15x15(2)
     i2_b3 = _zeros_15x15(3)
-    b1 = _zeros_15x15(2)
     b2 = _zeros_15x15(2)
+    b1 = _zeros_15x15(2)
     a[:, 0:6] = True
     i1_i3[:, 6:8] = True
     i2_b3[:, 8:11] = True
-    b1[:, 11:13] = True
-    b2[:, 13:15] = True
-    return np.vstack([a, i1_i3, i2_b3, b1, b2])
+    b2[:, 11:13] = True
+    b1[:, 13:15] = True
+    return np.vstack([a, i1_i3, i2_b3, b2, b1])
 
 
 def RSA_a_b_rdm():

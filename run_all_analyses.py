@@ -209,12 +209,21 @@ steps = [
      lambda: (pol.plot_correlations_slice(PFC, HP, n=11, c_1=1, perm_n=PERMS, dlc=False, animal_perm=True),
               pol.plot_diagonal_sums(HP, PFC, c_1=1, perm_n=PERMS, dlc=False, animal_perm=True))),
 
-    ("Ext Fig 7C-G | RSA + Policy (DLC residuals)",
-     "ext7_dlc",
-     lambda: (rsas.RSA_across_time_plot(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True),
-              pol.plot_policy_simple_GLM(HP_dlc, PFC_dlc, n_perm=PERMS, n=11, dlc=True),
-              pol.plot_correlations_slice(PFC_dlc, HP_dlc, n=11, c_1=1, perm_n=PERMS, dlc=True, animal_perm=False),
-              pol.plot_diagonal_sums(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True))),
+    ("Ext Fig 7C-E | RSA (DLC residuals)",
+     "ext7_dlc_rsa",
+     lambda: rsas.RSA_across_time_plot(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
+
+    ("Ext Fig 7 | Policy GLM (DLC residuals)",
+     "ext7_dlc_policy_glm",
+     lambda: pol.plot_policy_simple_GLM(HP_dlc, PFC_dlc, n_perm=PERMS, n=11, dlc=True)),
+
+    ("Ext Fig 7 | Policy correlations (DLC residuals)",
+     "ext7_dlc_policy_corr",
+     lambda: pol.plot_correlations_slice(PFC_dlc, HP_dlc, n=11, c_1=1, perm_n=PERMS, dlc=True, animal_perm=False)),
+
+    ("Ext Fig 7 | Policy diagonal sums (DLC residuals)",
+     "ext7_dlc_diagonal",
+     lambda: pol.plot_diagonal_sums(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
 
     ("Ext Fig 8  | Surprise plot",
      "ext8_surprise",
