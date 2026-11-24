@@ -67,7 +67,6 @@ def test_port_null_uses_same_cells_as_real():
 
 def test_port_cells_orientation_and_default():
     hp1, hp2 = np.zeros((2, 3, 3, 7, 7))
-    hp1[2, :, 4, 0] = 80; hp1[2, :, 5, 0] = 40; hp2[2, :, 0, 4] = 60; hp2[2, :, 0, 5] = 20   # same-port cells only
-    hp1[2, :, 6, 0] = 100; hp2[2, :, 0, 6] = 100          # B no-reward must not count
-    assert np.allclose(dec.decoding_scores(hp1, hp2)['Port'], 50)
+    hp1[2, :, 4, 0] = 80; hp2[2, :, 0, 4] = 60           # same-port cells only
+    assert np.allclose(dec.decoding_scores(hp1, hp2)['Port'], 70)
     assert np.allclose(dec.decoding_scores(hp1, hp2, same_port=False)['Port'], 0)

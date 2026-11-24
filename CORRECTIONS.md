@@ -36,11 +36,13 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 
 ## Results that change
 
-- Fig 4g, Port: with the cells that share a physical port (Initiation of layout 2 and B choice or B reward
-  of layout 3, averaged; no-reward excluded because the animal has left the port), CA1 38.9% and PFC 25.5%
-  (P = 3/35 = 0.086, not significant). With B choice only: CA1 44.4%, PFC 51.0%, P = 23/35. The same average on the
-  two states at different ports also gives CA1 > PFC (38.2% and 7.8%, P = 1/35), so it is not specific to the port.
-  B reward was added after the first result was seen. `dec.plot(HP, PFC, same_port=False)` uses the printed cells (with bug 5 fixed: PFC 13.5%; the original code gave PFC 27.1%, CA1 68.1%).
+- Fig 4g, Port: with the cells that share a physical port (Initiation of layout 2 and B choice of layout 3, both
+  directions), CA1 44.4% and PFC 51.0% (P = 23/35 = 0.657); the decoder does not show a stronger port code in CA1.
+  The original code gave CA1 68.1% (two states at different ports) and PFC 27.1% (one same-port and one
+  different-port cell, because of bug 5). `dec.plot(HP, PFC, same_port=False)` uses the original cells with bug 5 fixed (PFC 13.5%).
+  The result depends on the definition: also counting B reward at that port, averaged over cells, gives CA1 38.9%
+  and PFC 25.5% (P = 3/35 = 0.086). The decoder uses the last six trials of each type and the two bins around each poke.
+- Fig 4f, PFC matrix: changes slightly because of bug 5 (B choice decoded as Initiation 9% to 16%, as B choice 54% to 47%).
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
   bins remain, and the A versus B difference is a single bin.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
