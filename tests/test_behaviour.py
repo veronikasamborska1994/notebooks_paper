@@ -162,15 +162,20 @@ class RecCaptured(Exception):
     pass
 
 
-def rec_pokes(wrong_trial):
-    """Reversal means of the first problem (4 blocks of 5 trials per problem, 3 problems)."""
+def rec_pokes(wrong_trial, pokes=('A', 'B'), only_A_B=True):
+    """Reversal means of the first problem (4 blocks of 5 trials per problem, 3 problems).
+
+    On `wrong_trial` the animal makes `pokes` once the choice state has started ('other' is a port of
+    another problem); on every other trial it chooses A.
+    """
     from functions import functions_behaviour_rec as fr
     n = 70; tl = np.arange(n)
     block = tl // 5; task = np.minimum(tl // 20, 2) + 1
     events = []
     for t in range(n):
-        a = {1: 'poke_1', 2: 'poke_3', 3: 'poke_5'}[task[t]]; b = {1: 'poke_2', 2: 'poke_4', 3: 'poke_6'}[task[t]]
-        events += ['init_trial', 'choice_state', a] + ([b] if t == wrong_trial else [])
+        port = {'A': {1: 'poke_1', 2: 'poke_3', 3: 'poke_5'}[task[t]], 'B': {1: 'poke_2', 2: 'poke_4', 3: 'poke_6'}[task[t]],
+                'other': 'poke_3' if task[t] == 1 else 'poke_1'}
+        events += ['init_trial', 'choice_state'] + [port[k] for k in (pokes if t == wrong_trial else ('A',))]
     s = Session(block=block, task=task, configuration_i=np.full(n, 9),
                 poke_A=np.array([1, 3, 5])[task - 1], poke_B=np.array([2, 4, 6])[task - 1])
     s.events = [Ev(e) for e in events]
@@ -185,7 +190,7 @@ def rec_pokes(wrong_trial):
         def get_sessions(self):
             return [s] * 8                        # 8 sessions x 3 problems = the 24 expected
     try:
-        fr.out_of_sequence_recordings([Subject(), Subject()])
+        fr.out_of_sequence_recordings([Subject(), Subject()], only_A_B=only_A_B)
     except RecCaptured:
         pass
     finally:

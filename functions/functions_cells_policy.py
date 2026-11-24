@@ -164,7 +164,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
         values_95 = np.percentile(max_over_time, 95, axis=0)  # (n_predictors,)
         values_99 = np.percentile(max_over_time, 99, axis=0)
         cpd_max = np.max(cpd); plt.subplot(1,2,c+1); plt.title(titles[c])
-        array_pvals = np.ones((cpd.shape[0], cpd.shape[1])) # store where significant at .05 or .001
+        array_pvals = np.ones((cpd.shape[0], cpd.shape[1])) # store where significant at .05 or .01
         for pred in range(cpd.shape[1]):  # loop through pred
             array_pvals[(np.where(cpd[:,pred] > values_95[pred])[0]),pred] = 0.05
             array_pvals[(np.where(cpd[:,pred] > values_99[pred])[0]),pred] = 0.01
