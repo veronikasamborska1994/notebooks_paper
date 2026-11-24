@@ -375,7 +375,7 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
 
         plt.yticks(range(15), ('A T1 R', 'A T1 NR','A T2 R', 'A T2 NR',\
                            'A T3 R','A T3 NR', ' I T1',\
-                           'I T3', ' T2', 'B T3 R',\
+                           'I T3', 'I T2', 'B T3 R',\
                            ' B T3 NR','B T2 R', 'B T2 NR', 'B T1 R', 'B T1 NR'))
 
         plt.title(title_str[i])

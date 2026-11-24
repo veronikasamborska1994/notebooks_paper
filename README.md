@@ -48,6 +48,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 ## Repository structure
 
 ```
+├── CORRECTIONS.md               # Bugs fixed since publication and the results that change
 ├── run_all_analyses.py          # Standalone script to run all analyses
 ├── behaviour.ipynb              # Behavioural analysis notebook
 ├── cells - main figures.ipynb   # Neural main figures notebook
@@ -74,6 +75,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_port.py             # Port versus role decoding (synthetic sessions)
 │   ├── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
 │   └── test_fixes.py            # One test per remaining fix in CORRECTIONS.md
+├── figures/                     # Output of run_all_analyses.py (PNG; 5,000 permutations, seed 0)
 └── requirements.txt
 ```
 
@@ -92,7 +94,7 @@ Permutation tests shuffle sessions between brain regions (HP vs PFC) to test for
 - **Session shuffle**: randomly reassign sessions to regions
 - **Animal shuffle**: enumerate all possible splits of 7 animals into HP-sized (3) and PFC-sized (4) groups
 
-The `--perms` argument (or `perms` variable in notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits and use exact rank-based P values (the smallest possible P is 1/35 = 0.029).
+The `--perms` argument (`perms` or `n_perms` in the notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits and use exact rank-based P values (the smallest possible P is 1/35 = 0.029).
 
 ## Citation
 
