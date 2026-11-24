@@ -82,6 +82,52 @@ def animal_exp_permute(all_sessions_HP, all_sessions_PFC):
     return all_subjects_DM, all_subjects_fr
 
 
+def exact_perm_threshold(null, alpha=0.05, axis=0):
+    """Threshold for an exact permutation test on a small, fully enumerated null.
+
+    With N enumerated splits (the real split is one of them) the exact
+    one-sided P value of the real statistic is rank / N, where rank counts the
+    null values that are >= the real one. ``real > threshold`` is True exactly
+    when that P value is <= alpha. An interpolated np.percentile is not exact:
+    with the 35 animal splits it lets a statistic ranked 2nd (P = 2/35 = 0.057)
+    pass the 95th percentile, and lets the largest one pass the 99th percentile
+    although the smallest possible P is 1/35 = 0.029.
+
+    Parameters
+    ----------
+    null : array-like
+        Null statistics, permutations along ``axis``.
+    alpha : float
+        Significance level.
+    axis : int
+        Axis that indexes permutations.
+
+    Returns
+    -------
+    threshold : ndarray (or 0-d array)
+        The (k+1)-th largest null value, k = floor(alpha * N). np.inf when
+        k == 0, i.e. when alpha cannot be reached with N permutations.
+    """
+    null = np.asarray(null, dtype=float)
+    n = null.shape[axis]
+    k = int(np.floor(alpha * n + 1e-9))
+    if k < 1:
+        return np.full(np.delete(null.shape, axis).astype(int), np.inf)
+    return np.take(np.sort(null, axis=axis), n - 1 - k, axis=axis)
+
+
+def exact_perm_p(real, null, tol=1e-9):
+    """Exact one-sided permutation P value: fraction of null values >= real.
+
+    ``tol`` makes the count robust to floating-point noise and counts ties
+    against the real value (decoding scores are discrete, so ties do occur).
+    The real split is part of the enumerated null, so P is at least 1/N.
+    """
+    null = np.asarray(null, dtype=float)
+    rank = max(int(np.sum(null >= real - tol)), 1)
+    return rank / len(null), rank
+
+
 def _CPD(X, y):
     """Coefficient of partial determination for multi-output regression.
 

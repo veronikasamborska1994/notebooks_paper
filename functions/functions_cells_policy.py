@@ -23,7 +23,7 @@ from sklearn.linear_model import LinearRegression
 from itertools import combinations
 from tqdm.auto import trange
 from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed,
-    animal_exp_permute, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
+    animal_exp_permute, exact_perm_threshold, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
     XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS, TIME_INDICES, TIME_INDICES_DLC)
 
 
@@ -46,6 +46,16 @@ def _batch_corrcoef(X, y):
     return numer / denom
 
 
+def _policy_design(choices, reward, n):
+    """Design matrix of the policy model: n-back rewards, choices (A = 1, B = 0), choice x reward interactions, constant.
+
+    Used both to fit the policy weights and to apply them, so the two codings cannot differ.
+    Row t predicts trial t + n. Shape (n_trials - n, 3n + 1).
+    """
+    lags = lambda x: scipy.linalg.toeplitz(x, np.zeros(n))[n-1:-1]
+    return np.hstack([lags(reward), lags(choices), lags((choices-0.5)*(reward-0.5)*2), np.ones((len(choices)-n, 1))])
+
+
 def plot_policy_during_recordings(PFC, HP, n = 12): 
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
     outcomes (not shown) and choice-outcome interactions, Figure 5A.'''
@@ -59,12 +69,8 @@ def plot_policy_during_recordings(PFC, HP, n = 12):
         results_array = []
         for  s, sess in enumerate(dm):        
             DM = dm[s]; choices = DM[:,1]; reward = DM[:,2]
-            previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
-            previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
-            interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] #interactions rewards x choice
-            choices_current = (choices[n:]) # current choices need to start at nth trial
-            ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
-            X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
+            X = _policy_design(choices, reward, n)
+            choices_current = choices[n:] # current choices need to start at nth trial
             model = LogisticRegression(fit_intercept = False) 
             results = model.fit(X,choices_current) # fit logistic regression predicting current choice based on history of behaviour
             results_array.append(results.coef_[0]) # store coefficients
@@ -114,11 +120,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         n_trials, n_neurons, n_timepoints = firing_rates.shape
         choices = DM[:,1]; reward = DM[:,2];  choices_current = choices-0.5
 
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
-        previous_choices = scipy.linalg.toeplitz(0.5-choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
-        interactions = scipy.linalg.toeplitz((((0.5-choices)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
-        ones = np.ones(len(interactions)).reshape(len(interactions),1) # constant
-        X = np.hstack([previous_rewards,previous_choices,interactions,ones]) # design matrix for calculating policy
+        X = _policy_design(choices, reward, n) # design matrix for calculating policy
         policy = np.matmul(X, policy_beh) # calculate policy on each trial
         
         choices_current = choices_current[n:];  reward = reward[n:];  firing_rates = firing_rates[n:] # current choices need to start at nth trial
@@ -189,12 +191,8 @@ def policy_for_GLM(data, n, perm = False):
     results_array = []
     for  s, sess in enumerate(dm):     
         DM = dm[s]; choices = DM[:,1]; reward = DM[:,2];
-        previous_rewards = scipy.linalg.toeplitz(reward, np.zeros(n))[n-1:-1] # find rewards on n-back trials
-        previous_choices = scipy.linalg.toeplitz(choices, np.zeros(n))[n-1:-1] # find choices on n-back trials
-        interactions = scipy.linalg.toeplitz((((choices-0.5)*(reward-0.5))*2),np.zeros(n))[n-1:-1] # interactions rewards x choice
-        choices_current = (choices[n:]) # current choices need to start at nth trial
-        ones = np.ones(len(interactions)).reshape(len(interactions),1) # add constant
-        X = (np.hstack([previous_rewards,previous_choices,interactions,ones])) # create design matrix
+        X = _policy_design(choices, reward, n)
+        choices_current = choices[n:] # current choices need to start at nth trial
         model = LogisticRegression(fit_intercept = False) 
         results = model.fit(X,choices_current)# fit logistic regression predicting current choice based on history of behaviour
         results_array.append(results.coef_[0]) # store coefficients
@@ -227,11 +225,7 @@ def policy_A_B(data, n = 10, perm = True):
         for i in [1, 2, 3]:
             task_index = np.where(taskid == i)[0]
             rewards_task = reward_current[task_index]; choices_task = choices_current[task_index]
-            previous_rewards_task = scipy.linalg.toeplitz(rewards_task, np.zeros(n))[n-1:-1]
-            previous_choices_task = scipy.linalg.toeplitz(0.5-choices_task, np.zeros(n))[n-1:-1]
-            interactions_task = scipy.linalg.toeplitz((((0.5-choices_task)*(rewards_task-0.5))*2), np.zeros(n))[n-1:-1]
-            ones = np.ones(len(interactions_task)).reshape(len(interactions_task), 1)
-            X = np.hstack([previous_rewards_task, previous_choices_task, interactions_task, ones])
+            X = _policy_design(choices[task_index], rewards_task, n)
             policy = np.matmul(X, policy_beh)
             rewards_task = rewards_task[n:]; choices_task = choices_task[n:]
             ones_task = np.ones(len(choices_task))
@@ -312,7 +306,7 @@ def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_H
                                np.mean(coefs_tasks[6:9], 0), np.mean(coefs_tasks[9:12], 0),
                                np.mean(coefs_tasks[12:15], 0), np.mean(coefs_tasks[15:18], 0)])
 
-    b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1])
+    b_a = np.asarray(task_mean_A_B[1]) - np.asarray(task_mean_A_B[0]) # B - A (index 0 is A, 1 is B)
     diff = np.asarray(b_a[3:]) - np.asarray(b_a[:3])
     pfc_hp = np.asarray(task_mean_A_B)[:,3:] - np.asarray(task_mean_A_B)[:,:3]
     return diff, pfc_hp
@@ -436,21 +430,26 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
     diff_PFC_HP_perm, PFC_HP_perm = permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
     diff_PFC_HP_perm = np.asarray(diff_PFC_HP_perm);  PFC_HP_perm  = np.asarray(PFC_HP_perm); task_mean_A_B = np.asarray(task_mean_A_B)
 
-    b_a = np.asarray(task_mean_A_B[0])- np.asarray(task_mean_A_B[1]) # real B - A choice policy difference
+    b_a = np.asarray(task_mean_A_B[1]) - np.asarray(task_mean_A_B[0]) # real B - A choice policy difference (index 0 is A, 1 is B)
     diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # difference in B - A PFC - CA1
 
     # Max-statistic correction for B-A difference: max across anchors and time per permutation, then percentile
     n_p = len(diff_PFC_HP_perm)
     max_ba_per_perm = np.max(diff_PFC_HP_perm.reshape(n_p, -1), axis=1)  # (perm_n,)
-    _95th_ba = np.percentile(max_ba_per_perm, 95)
+    # animal permutations: only 35 splits, so use exact rank-based thresholds (P < .01 cannot be reached)
+    if animal_perm:
+        _thr = exact_perm_threshold
+    else:
+        _thr = lambda null, alpha: np.percentile(null, 100*(1 - alpha))
+    _95th_ba = _thr(max_ba_per_perm, 0.05)
     indx_b_a_diff = np.where(diff_PFC_HP > _95th_ba)
 
     # Max-statistic correction for A and B separately
     # PFC_HP_perm shape: (perm_n, 2, 3, n_timepoints) — 2=A/B, 3=init/ch/rew
     max_a_per_perm = np.max(PFC_HP_perm[:, 0].reshape(n_p, -1), axis=1)  # (perm_n,)
     max_b_per_perm = np.max(PFC_HP_perm[:, 1].reshape(n_p, -1), axis=1)
-    _95th_a = np.percentile(max_a_per_perm, 95); _99th_a = np.percentile(max_a_per_perm, 99)
-    _95th_b = np.percentile(max_b_per_perm, 95); _99th_b = np.percentile(max_b_per_perm, 99)
+    _95th_a = _thr(max_a_per_perm, 0.05); _99th_a = _thr(max_a_per_perm, 0.01)
+    _95th_b = _thr(max_b_per_perm, 0.05); _99th_b = _thr(max_b_per_perm, 0.01)
 
     # real A/B difference between CA1 and PFC on A and B trials
     a_b_real = task_mean_A_B[:,3:,:] - task_mean_A_B[:,:3,:] # PFC - CA1
@@ -474,13 +473,13 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
                     # A: P < .05 (small dots) and P < .01 (large dots)
                     p_a_05 = significant_diff_a_05[1][np.where(significant_diff_a_05[0] == per)[0]]
                     p_a_01 = significant_diff_a_01[1][np.where(significant_diff_a_01[0] == per)[0]]
-                    axs[per].plot(p_a_05, np.ones(p_a_05.shape)*ymax + 0.02, '.', markersize = 2, color= 'green')
-                    axs[per].plot(p_a_01, np.ones(p_a_01.shape)*ymax + 0.02, '.', markersize = 4, color= 'green', label = 'A PFC vs CA1 < .01')
+                    axs[per].plot(p_a_05, np.ones(p_a_05.shape)*ymax + 0.02, '.', markersize = 2, color= 'green', label = 'A PFC vs CA1 < .05' if animal_perm else None)
+                    axs[per].plot(p_a_01, np.ones(p_a_01.shape)*ymax + 0.02, '.', markersize = 4, color= 'green', label = None if animal_perm else 'A PFC vs CA1 < .01')
                     # B: P < .05 (small dots) and P < .01 (large dots)
                     p_b_05 = significant_diff_b_05[1][np.where(significant_diff_b_05[0] == per)[0]]
                     p_b_01 = significant_diff_b_01[1][np.where(significant_diff_b_01[0] == per)[0]]
-                    axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink')
-                    axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = 'B PFC vs CA1 < .01')
+                    axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink', label = 'B PFC vs CA1 < .05' if animal_perm else None)
+                    axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = None if animal_perm else 'B PFC vs CA1 < .01')
                     # B-A difference
                     p_a_b = indx_b_a_diff[1][np.where(indx_b_a_diff[0] == per)[0]]
                     axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
@@ -561,8 +560,12 @@ def permute_sessions_diagonal(HP, PFC, c_1 = 1, n = 11, perm_n = 2, dlc = False,
 
     diff_all_a = [all_shuffle_a[i][1] - all_shuffle_a[i][0] for i in range(len(all_shuffle_a))]
     diff_all_b = [all_shuffle_b[i][1] - all_shuffle_b[i][0] for i in range(len(all_shuffle_b))]
-    _all_95_a = np.percentile(diff_all_a, 95)
-    _all_95_b = np.percentile(diff_all_b, 95)
+    if animal_perm: # only 35 animal splits: exact rank-based threshold
+        _all_95_a = exact_perm_threshold(diff_all_a, 0.05)
+        _all_95_b = exact_perm_threshold(diff_all_b, 0.05)
+    else:
+        _all_95_a = np.percentile(diff_all_a, 95)
+        _all_95_b = np.percentile(diff_all_b, 95)
     return diff_all_a, diff_all_b, _all_95_a, _all_95_b
     
  
@@ -601,7 +604,7 @@ def plot_diagonal_sums(HP, PFC,c_1 = 1, perm_n = 2, dlc = False, animal_perm = F
         plt.subplot(1,2,d+1)
         plt.hist(diff, color = 'grey', alpha = 0.5)
         plt.vlines(real[d],ymin = 0, ymax = max(np.histogram(diff)[0]),  color = 'pink', label = 'Difference in the data')
-        plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]), color = 'black', label = '95% confidence interval')
+        plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]), color = 'black', label = 'permutation threshold (P < .05)')
         plt.xlabel('Permuted differences'); plt.ylabel('Count')
         plt.legend(fontsize = 7)
         plt.title(str_title[d])

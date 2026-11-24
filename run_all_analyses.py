@@ -134,12 +134,16 @@ steps = [
      "ext2ac_reversals_rec",
      lambda: fun_beh_rec.trials_till_reversal_plot_recordings(exp_rec)),
 
-    ("Ext Fig 2D-F | Out of sequence during recording",
+    ("Ext Fig 2D-F | Out of sequence (A/B pokes only)",
      "ext2df_oos_rec",
      lambda: fun_beh_rec.out_of_sequence_recordings(exp_rec, only_A_B=True)),
 
-    ("Ext Fig 1I-J | Forced choice trials",
-     "ext1ij_forced",
+    ("Ext Fig 2D-G | Out of sequence (all pokes)",
+     "ext2dg_oos_all",
+     lambda: fun_beh_rec.out_of_sequence_recordings(exp_rec, only_A_B=False)),
+
+    ("Ext Fig 2I-J | Forced choice trials",
+     "ext2ij_forced",
      lambda: fun_beh_rec.plot_forced(exp_rec)),
 
     # ---- NEURAL: Main Figures ----
@@ -165,7 +169,7 @@ steps = [
 
     ("Fig 5D-E | SVD between brains",
      "fig5de_svd_brains",
-     lambda: SVD.svd_between_brains(HP_dlc, PFC_dlc, inds=np.arange(64))),
+     lambda: SVD.svd_between_brains(HP_dlc, PFC_dlc)),
 
     ("Fig 5D-H | SVD main figure (session perms)",
      "fig5dh_svd_main",
@@ -205,12 +209,21 @@ steps = [
      lambda: (pol.plot_correlations_slice(PFC, HP, n=11, c_1=1, perm_n=PERMS, dlc=False, animal_perm=True),
               pol.plot_diagonal_sums(HP, PFC, c_1=1, perm_n=PERMS, dlc=False, animal_perm=True))),
 
-    ("Ext Fig 7C-G | RSA + Policy (DLC residuals)",
-     "ext7_dlc",
-     lambda: (rsas.RSA_across_time_plot(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True),
-              pol.plot_policy_simple_GLM(HP_dlc, PFC_dlc, n_perm=PERMS, n=11, dlc=True),
-              pol.plot_correlations_slice(PFC_dlc, HP_dlc, n=11, c_1=1, perm_n=PERMS, dlc=True, animal_perm=False),
-              pol.plot_diagonal_sums(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True))),
+    ("Ext Fig 7C-E | RSA (DLC residuals)",
+     "ext7_dlc_rsa",
+     lambda: rsas.RSA_across_time_plot(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
+
+    ("Ext Fig 7 | Policy GLM (DLC residuals)",
+     "ext7_dlc_policy_glm",
+     lambda: pol.plot_policy_simple_GLM(HP_dlc, PFC_dlc, n_perm=PERMS, n=11, dlc=True)),
+
+    ("Ext Fig 7 | Policy correlations (DLC residuals)",
+     "ext7_dlc_policy_corr",
+     lambda: pol.plot_correlations_slice(PFC_dlc, HP_dlc, n=11, c_1=1, perm_n=PERMS, dlc=True, animal_perm=False)),
+
+    ("Ext Fig 7 | Policy diagonal sums (DLC residuals)",
+     "ext7_dlc_diagonal",
+     lambda: pol.plot_diagonal_sums(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
 
     ("Ext Fig 8  | Surprise plot",
      "ext8_surprise",

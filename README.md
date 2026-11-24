@@ -22,7 +22,7 @@ Requires Python >= 3.9.
 
 ### Option 1: Standalone script (recommended)
 
-Runs all 29 analysis steps and saves figures as SVG + PNG:
+Runs all analysis steps and saves figures as SVG + PNG:
 
 ```bash
 python run_all_analyses.py --data-path /path/to/data_share/ --perms 5000 --output-dir figures
@@ -62,17 +62,29 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── functions_cells_ext.py   # Extended data neural analyses (Ext Fig 4, 8)
 │   └── plot_neurons.py          # Single neuron visualisation (Fig 2)
 ├── tests/
-│   └── test_validation.py       # Validation tests for core functions
+│   ├── test_validation.py       # Core functions
+│   ├── test_behaviour.py        # Behavioural analyses (synthetic sessions)
+│   ├── test_decode.py           # Decoder (synthetic sessions)
+│   └── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
 └── requirements.txt
 ```
+
+## Tests
+
+```bash
+pip install pytest
+python -m pytest tests
+```
+
+The tests use synthetic data only and do not need the data download.
 
 ## Statistical tests
 
 Permutation tests shuffle sessions between brain regions (HP vs PFC) to test for regional differences. Two types:
-- **Session shuffle**: randomly reassign sessions to regions, preserving animal structure
+- **Session shuffle**: randomly reassign sessions to regions
 - **Animal shuffle**: enumerate all possible splits of 7 animals into HP-sized (3) and PFC-sized (4) groups
 
-The `--perms` argument (or `perms` variable in notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits.
+The `--perms` argument (or `perms` variable in notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits and use exact rank-based P values (the smallest possible P is 1/35 = 0.029).
 
 ## Citation
 

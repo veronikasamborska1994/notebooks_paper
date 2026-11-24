@@ -53,7 +53,7 @@ def trials_till_reversal_plot_recordings(experiment):
                 for i, crossing_trial in enumerate(threshold_crossing_trials): 
                     if reversal_number <  12:
                         if i == 0: # first element in the threshold_crossing_trials_list 
-                            reversal_to_threshold[reversal_number] = crossing_trial
+                            reversal_to_threshold[reversal_number] = crossing_trial + 1 # trials 0 to crossing_trial
                         else: # for other than the first thershold in the session calculate the number of trials since block change
                             reversal_to_threshold[reversal_number] = (crossing_trial-reversal_trials[i-1])
                       
@@ -201,21 +201,19 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                         if choice_state_count == task_1[0]: # first trial is always a forced 
                             prev_choice  = 'forced_state'
     
-                        if event == poke_A_1: # 
-                            if choice_state == True: 
+                        if event == poke_A_1:
+                            if choice_state == True:
                                 prev_choice = 'Poke_A_1' # animal chose A during the choice phase
-                                choice_state = False # indicate the animal made a choice 
-                            elif choice_state == False and  prev_choice == 'Poke_B_1': # animal chose B previously
-                                if event == poke_B_1:
-                                    wrong_count += 1 # record if A poke was after an animal already chose B
-                                        
-                        elif event == poke_B_1 : 
+                                choice_state = False # indicate the animal made a choice
+                            elif choice_state == False and prev_choice == 'Poke_B_1': # animal chose B previously
+                                wrong_count += 1 # record A poke after animal already chose B
+
+                        elif event == poke_B_1:
                             if choice_state == True:
                                 prev_choice = 'Poke_B_1' # animal chose B during the choice phase
-                                choice_state = False # indicate the animal made a choice 
-                            elif choice_state == False and prev_choice == 'Poke_A_1': # animal chose B previously
-                                if event == poke_B_1:
-                                    wrong_count += 1 # record if A poke was after an animal already chose B
+                                choice_state = False # indicate the animal made a choice
+                            elif choice_state == False and prev_choice == 'Poke_A_1': # animal chose A previously
+                                wrong_count += 1 # record B poke after animal already chose A
                         
                         elif event == poke_I_2 or event == poke_I_3 or event == poke_A_2 or event == poke_A_3 or event == poke_B_2 or event == poke_B_3:
                             if event != poke_I_1 and only_A_B == False:
@@ -272,8 +270,9 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                                 if choice_state == False and (prev_choice == 'Poke_B_3' or prev_choice == 'Poke_A_3'):
                                     wrong_count += 1 
                       
-                session_wrong_choice = session_wrong_choice[:len(task)] 
-                reversal_trials = np.insert(reversal_trials,0,0)
+                # counts are appended at the next choice, so drop the first (empty) one and add the last trial's
+                session_wrong_choice = (session_wrong_choice[1:] + [wrong_count])[:len(task)]
+                reversal_trials = np.insert(reversal_trials + 1,0,0) # first trial of each block
                 reversal_trials = np.append(reversal_trials,len(task)); reversal_mean = []
                 for i,revs in enumerate(reversal_trials):
                      if i > 0 and i < len(reversal_trials)-1:
@@ -385,6 +384,15 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
 
     
    
+def rewarded_streak(correct_rewarded):
+    """Number of consecutive correct, rewarded choices immediately before each trial (0 after an error or no reward)."""
+    streak = np.zeros(len(correct_rewarded)); count = 0
+    for t, good in enumerate(correct_rewarded):
+        streak[t] = count
+        count = count + 1 if good else 0
+    return streak
+
+
 def forced_trials_(experiment):
     As_state_a_b_s = []; Bs_state_a_b_s = []; As_state_b_a_s = []; Bs_state_b_a_s = []  
     other_state_b_subj = []; other_state_a_subj = []
@@ -421,14 +429,7 @@ def forced_trials_(experiment):
 
             correct = np.hstack([correct_1,correct_2,correct_3])
             reward = session.trial_data['outcomes']; corr_rew = correct*reward
-            corr_rew = np.insert(corr_rew,0,0); 
-            cum = [0]; cum_ = 0
-            for crr,cor in enumerate(corr_rew):
-                cum_ = cum_+ corr_rew[crr]
-                cum.append(cum_)
-                if corr_rew[crr] == 0:
-                    cum_ = 0 
-            cum  = np.asarray(cum[:len(reward)])
+            cum = rewarded_streak(corr_rew)
             for ev,event in enumerate(events_forced):
                 if event == 'init_trial':
                     if ev < len(events_forced)-1:
@@ -642,10 +643,10 @@ def plot_forced(experiment):
     a_oth = scipy.stats.ttest_rel(Bs_state_b_a_s,other_state_a_subj)
     b_oth = scipy.stats.ttest_rel(As_state_a_b_s,other_state_b_subj)
     
-    print('A vs B in A forced B good:' + ' t = ' + str(np.round(a_b.statistic,2)) + ' p = ' + str(np.round(a_b.pvalue,2)));
-    print('B vs other in A forced B good:' + ' t = ' + str(np.round(a_oth.statistic,2)) + ' p = ' + str(np.round(a_oth.pvalue,2)));
-    print('A vs B in B forced A good:' +  ' t = ' + str(np.round(b_a.statistic,2)) + ' p = ' + str(np.round(b_a.pvalue,2)));
-    print('A vs other in B forced A good:'+ ' t = ' + str(np.round(b_oth.statistic,2)) + ' p = ' + str(np.round(b_oth.pvalue,2)));
+    print('A vs B in A forced B good:' + ' t = ' + str(np.round(a_b.statistic,2)) + ' p = ' + str(np.round(a_b.pvalue,3)));
+    print('B vs other in A forced B good:' + ' t = ' + str(np.round(a_oth.statistic,2)) + ' p = ' + str(np.round(a_oth.pvalue,3)));
+    print('A vs B in B forced A good:' +  ' t = ' + str(np.round(b_a.statistic,2)) + ' p = ' + str(np.round(b_a.pvalue,3)));
+    print('A vs other in B forced A good:'+ ' t = ' + str(np.round(b_oth.statistic,2)) + ' p = ' + str(np.round(b_oth.pvalue,3)));
 
     d_str = np.hstack([np.tile('As',7),np.tile('Bs',7), np.tile('Other',7)])
     data = {'Choice Probability': d_a, 'Poke Identity': d_str}
