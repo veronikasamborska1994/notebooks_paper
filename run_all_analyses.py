@@ -77,6 +77,7 @@ from functions import data_import as di_beh
 from functions import functions_cells_regress as regs
 from functions import functions_cells_rsa as rsas
 from functions import functions_cells_decode as dec
+from functions import functions_cells_port as port
 from functions import functions_cells_svd as SVD
 from functions import functions_cells_policy as pol
 from functions import functions_cells_ext as ext
@@ -162,6 +163,10 @@ steps = [
     ("Fig 4F-G | Decoding",
      "fig4fg_decode",
      lambda: dec.plot(HP, PFC)),
+
+    ("Post hoc  | Port vs role decoding over time (not in the paper)",
+     "posthoc_port_over_time",
+     lambda: port.plot_port_over_time(HP, PFC)),
 
     ("Fig 5A-C | SVD example patterns",
      "fig5ac_svd_examples",

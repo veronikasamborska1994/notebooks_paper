@@ -61,6 +61,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── functions_cells_regress.py # GLM regression / CPD analysis (Fig 4B)
 │   ├── functions_cells_rsa.py   # RSA across time (Fig 4C–E)
 │   ├── functions_cells_decode.py # SVM decoding across tasks (Fig 4F–G)
+│   ├── functions_cells_port.py  # Post hoc port versus role decoding (not in the paper)
 │   ├── functions_cells_svd.py   # SVD population pattern analysis (Fig 5)
 │   ├── functions_cells_policy.py # Neural correlates of behavioural policy (Fig 6)
 │   ├── functions_cells_ext.py   # Extended data neural analyses (Ext Fig 4, 8)
@@ -69,6 +70,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_validation.py       # Core functions
 │   ├── test_behaviour.py        # Behavioural analyses (synthetic sessions)
 │   ├── test_decode.py           # Decoder (synthetic sessions)
+│   ├── test_port.py             # Port versus role decoding (synthetic sessions)
 │   └── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
 └── requirements.txt
 ```
