@@ -187,20 +187,22 @@ def plot_port_pair(hp1, hp2, pfc1, pfc2):
     """
     cmap = palettable.scientific.sequential.Acton_3.mpl_colormap
     fig, axs = plt.subplots(1, 4, figsize=(20, 5.5), constrained_layout=True)
-    panels = [(title, m[2].mean(0), cell) for region, m1, m2 in (('CA1', hp1, hp2), ('PFC', pfc1, pfc2))
-              for title, m, cell in ((region + '\ntrained on layout 2, tested on 3', m1, PORT_CELLS_SAME_PORT[0]),
-                                     (region + '\ntrained on layout 3, tested on 2', m2, PORT_CELLS_SAME_PORT[1]))]
-    for k, (ax, (title, conf, (row, col))) in enumerate(zip(axs, panels)):
+    # every state is labelled with its layout: rows are the tested layout, columns the training layout
+    names = ['I%d', 'A%d choice', 'A%d reward', 'A%d no-reward', 'B%d choice', 'B%d reward', 'B%d no-reward']
+    panels = [(region + '\ntrain on %s, test on true %s' % (('I2', 'B3') if train == 2 else ('B3', 'I2')), m[2].mean(0), cell, train, test)
+              for region, m1, m2 in (('CA1', hp1, hp2), ('PFC', pfc1, pfc2))
+              for m, cell, train, test in ((m1, PORT_CELLS_SAME_PORT[0], 2, 3), (m2, PORT_CELLS_SAME_PORT[1], 3, 2))]
+    for ax, (title, conf, (row, col), train, test) in zip(axs, panels):
         img = ax.imshow(conf, cmap=cmap, vmin=0, vmax=100)
         for i in range(7):
             for j in range(7):
                 ax.text(j, i, '%.0f' % conf[i, j], ha='center', va='center', fontsize=9,
                         color='black' if conf[i, j] > 60 else 'white')
         ax.add_patch(plt.Rectangle((col - 0.5, row - 0.5), 1, 1, fill=False, edgecolor='limegreen', linewidth=3.5))
-        ax.set_title(title); ax.set_xlabel('Predicted')
-        ax.set_xticks(range(7)); ax.set_xticklabels(STATES, rotation='vertical')
-        ax.set_yticks(range(7)); ax.set_yticklabels(STATES if k == 0 else [])
-    axs[0].set_ylabel('Actual')
+        ax.set_title(title)
+        ax.set_xlabel('Decoded as (trained on layout %d)' % train); ax.set_ylabel('Actual (tested on layout %d)' % test)
+        ax.set_xticks(range(7)); ax.set_xticklabels([n % train for n in names], rotation='vertical')
+        ax.set_yticks(range(7)); ax.set_yticklabels([n % test for n in names])
     fig.colorbar(img, ax=axs, label='Decoding (%)', shrink=0.8)
     return fig
 
