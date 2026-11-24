@@ -32,7 +32,6 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 | 23 | The first block of each recording session was counted one trial short | Ext 2a-c |
 | 24 | The rewarded-streak counter selecting forced trials lagged by a trial and did not reset at an error | Ext 2i, j |
 | 25 | The policy regressor was built with choices coded differently from the logistic fit | Fig 6b-e; Ext 5c, d; Ext 7 |
-| 26 | The "B - A, PFC vs CA1" test was computed as A - B | Fig 6e; Ext 5d; Ext 7 |
 
 ## Results that change
 
@@ -48,9 +47,9 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
   with every state labelled with its layout.
 - Fig 4f, PFC matrix: changes slightly because of bug 5 (B choice decoded as Initiation 9% to 16%, as B choice 54% to 47%).
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
-  bins remain, and the A versus B difference is a single bin.
+  bins remain.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
-  choice (5b), policy on A (5c, P = 2/35) and A and A versus B (5d) do not reach P < 0.05.
+  choice (5b), policy on A (5c, P = 2/35) and A (5d) do not reach P < 0.05.
 - Large significance markers are P < 0.01, not P < 0.001.
 - Fig 1k, history of choices: F(9,72) = 2.71, P = 0.009 (printed as P = 0.773).
 

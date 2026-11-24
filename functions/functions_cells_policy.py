@@ -306,7 +306,7 @@ def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_H
                                np.mean(coefs_tasks[6:9], 0), np.mean(coefs_tasks[9:12], 0),
                                np.mean(coefs_tasks[12:15], 0), np.mean(coefs_tasks[15:18], 0)])
 
-    b_a = np.asarray(task_mean_A_B[1]) - np.asarray(task_mean_A_B[0]) # B - A (index 0 is A, 1 is B)
+    b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # A - B (index 0 is A, 1 is B)
     diff = np.asarray(b_a[3:]) - np.asarray(b_a[:3])
     pfc_hp = np.asarray(task_mean_A_B)[:,3:] - np.asarray(task_mean_A_B)[:,:3]
     return diff, pfc_hp
@@ -430,8 +430,8 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
     diff_PFC_HP_perm, PFC_HP_perm = permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
     diff_PFC_HP_perm = np.asarray(diff_PFC_HP_perm);  PFC_HP_perm  = np.asarray(PFC_HP_perm); task_mean_A_B = np.asarray(task_mean_A_B)
 
-    b_a = np.asarray(task_mean_A_B[1]) - np.asarray(task_mean_A_B[0]) # real B - A choice policy difference (index 0 is A, 1 is B)
-    diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # difference in B - A PFC - CA1
+    b_a = np.asarray(task_mean_A_B[0])- np.asarray(task_mean_A_B[1]) # real A - B choice policy difference (index 0 is A, 1 is B)
+    diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # (A - B) PFC - (A - B) CA1 = (B - A) CA1 - (B - A) PFC: positive where CA1 has the larger B - A difference
 
     # Max-statistic correction for B-A difference: max across anchors and time per permutation, then percentile
     n_p = len(diff_PFC_HP_perm)
