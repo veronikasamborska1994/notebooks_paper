@@ -1,15 +1,15 @@
 """Neural correlates of behavioural policy (Figure 6).
 
-Analyses how neural firing rate patterns relate to the animal's behavioural
-policy (choice history weights from logistic regression). Computes correlations
-between policy coefficients and neural CPDs across time, with session-shuffle
-and animal-shuffle permutation tests.
+Analyses how neural firing rates relate to the animal's behavioural policy
+(estimated from a logistic regression on the history of choices and outcomes).
+Correlates the policy weights of neurons across problems at each pair of time
+points, with session-shuffle and animal-shuffle permutation tests.
 
 Key functions:
 - plot_policy_during_recordings: logistic regression of choice history (Fig 6A)
 - plot_policy_simple_GLM: GLM of policy vs neural activity (Fig 6B)
-- plot_correlations_slice: policy-neural correlations at a time slice (Fig 6C)
-- plot_diagonal_sums: diagonal sum analysis (Fig 6D)
+- plot_correlations_slice: slices through the cross-problem correlation matrices (Fig 6E)
+- plot_diagonal_sums: correlation matrices and their diagonal sums (Fig 6C-D)
 """
 
 import scipy
@@ -58,7 +58,7 @@ def _policy_design(choices, reward, n):
 
 def plot_policy_during_recordings(PFC, HP, n = 12): 
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions, Figure 5A.'''
+    outcomes (not shown) and choice-outcome interactions, Figure 6A.'''
     
     # Split sessions by animal using shared constants
     all_subjects_DM, _ = animal_exp_permute(HP, PFC)
@@ -145,7 +145,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
 
 
 def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False): 
-    ''' Plotting CPDs and significance levels, Figure 5B)''' 
+    ''' Plotting CPDs and significance levels (Figure 6B)''' 
     cpd_HP, cpd_perm_HP =  GLM_policy_roll_tome(HP, perm = n_perm, n = n)
     cpd_PFC, cpd_perm_PFC =  GLM_policy_roll_tome(PFC, perm =  n_perm, n = n)
     cpd_HP_m = np.nanmean(cpd_HP,0); cpd_PFC_m = np.nanmean(cpd_PFC,0)
@@ -183,7 +183,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
 
 def policy_for_GLM(data, n, perm = False):
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions to use for policy calculations for PFC and CA1 animals in GLM on Figure 5A.'''
+    outcomes (not shown) and choice-outcome interactions to use for policy calculations for PFC and CA1 animals in the GLM of Figure 6B.'''
     if perm:
         dm = data[0]
     else:

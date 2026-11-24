@@ -116,7 +116,7 @@ steps = [
      "fig1d_session_plot",
      lambda: fun_beh.session_plot_moving_average(exp_train.sessions[-1])),
 
-    ("Fig 1E  | Trials to reversal",
+    ("Fig 1E, Ext Fig 1A | Trials to threshold",
      "fig1e_trials_reversal",
      lambda: fun_beh.trials_till_reversal_plot(exp_train)),
 
@@ -124,11 +124,11 @@ steps = [
      "fig1f_meta_learning",
      lambda: fun_beh.meta_learning_reversals(exp_train)),
 
-    ("Fig 1G-H | Out of sequence pokes",
+    ("Fig 1G-H, Ext Fig 1B | Out of sequence pokes",
      "fig1gh_out_of_sequence",
      lambda: fun_beh.out_of_sequence(exp_train, first_task_only=False)),
 
-    ("Fig 1I-J | Policy during training",
+    ("Fig 1I-L | Policy during training",
      "fig1ij_policy_training",
      lambda: fun_beh.plot_policy_during_training(exp_train)),
 
@@ -137,7 +137,7 @@ steps = [
      "ext2ac_reversals_rec",
      lambda: fun_beh_rec.trials_till_reversal_plot_recordings(exp_rec)),
 
-    ("Ext Fig 2D-F | Out of sequence (A/B pokes only)",
+    ("Ext Fig 2H | Out of sequence (A/B pokes only)",
      "ext2df_oos_rec",
      lambda: fun_beh_rec.out_of_sequence_recordings(exp_rec, only_A_B=True)),
 
@@ -170,15 +170,15 @@ steps = [
      "posthoc_port_over_time",
      lambda: port.plot_port_over_time(HP, PFC)),
 
-    ("Fig 5A-C | SVD example patterns",
+    ("Fig 5B-C | SVD example patterns",
      "fig5ac_svd_examples",
      lambda: SVD.plot_example_patterns(PFC)),
 
-    ("Fig 5D-E | SVD between brains",
+    ("Fig 5E   | SVD between brains",
      "fig5de_svd_brains",
      lambda: SVD.svd_between_brains(HP_dlc, PFC_dlc)),
 
-    ("Fig 5D-H | SVD main figure (session perms)",
+    ("Fig 5D, F-J | SVD main figure (session perms)",
      "fig5dh_svd_main",
      lambda: SVD.plot_main_figure(HP, PFC, HP_dlc, PFC_dlc, n_perms=PERMS)),
 
@@ -190,11 +190,11 @@ steps = [
      "fig6b_policy_glm",
      lambda: pol.plot_policy_simple_GLM(HP, PFC, n_perm=PERMS, n=11, dlc=False)),
 
-    ("Fig 6C   | Policy correlations",
+    ("Fig 6E   | Policy correlation slices",
      "fig6c_policy_corr",
      lambda: pol.plot_correlations_slice(PFC, HP, n=11, c_1=1, perm_n=PERMS, dlc=False, animal_perm=False)),
 
-    ("Fig 6D   | Policy diagonal sums",
+    ("Fig 6C-D | Policy correlation matrices and diagonal sums",
      "fig6d_policy_diag",
      lambda: pol.plot_diagonal_sums(HP, PFC, perm_n=PERMS, dlc=False)),
 
@@ -220,15 +220,15 @@ steps = [
      "ext7_dlc_rsa",
      lambda: rsas.RSA_across_time_plot(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
 
-    ("Ext Fig 7 | Policy GLM (DLC residuals)",
+    ("Ext Fig 7 | Policy GLM (DLC residuals; not a printed panel)",
      "ext7_dlc_policy_glm",
      lambda: pol.plot_policy_simple_GLM(HP_dlc, PFC_dlc, n_perm=PERMS, n=11, dlc=True)),
 
-    ("Ext Fig 7 | Policy correlations (DLC residuals)",
+    ("Ext Fig 7G | Policy correlation slices (DLC residuals)",
      "ext7_dlc_policy_corr",
      lambda: pol.plot_correlations_slice(PFC_dlc, HP_dlc, n=11, c_1=1, perm_n=PERMS, dlc=True, animal_perm=False)),
 
-    ("Ext Fig 7 | Policy diagonal sums (DLC residuals)",
+    ("Ext Fig 7F | Policy diagonal sums (DLC residuals)",
      "ext7_dlc_diagonal",
      lambda: pol.plot_diagonal_sums(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
 

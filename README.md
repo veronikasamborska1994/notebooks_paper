@@ -32,7 +32,8 @@ Runs all analysis steps and saves figures as SVG + PNG:
 python run_all_analyses.py --data-path /path/to/data_share/ --perms 5000 --output-dir figures
 ```
 
-Use `--perms 5` or `--perms 100` for a quick check. The paper used 5000 permutations.
+Use `--perms 5` or `--perms 100` for a quick check. The paper used 5000 permutations. The random seed is reset before
+every step (`--seed`, default 0), so each figure is reproduced exactly; `--only fig6c` runs a single step.
 
 ### Option 2: Jupyter notebooks
 
@@ -56,8 +57,8 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── RSAs.py                  # Representational dissimilarity matrices
 │   ├── data_import.py           # Import training behavioural data (pyControl)
 │   ├── data_import_ephys.py     # Import recording behavioural data (pyControl)
-│   ├── functions_behaviour.py   # Behavioural analyses for training (Fig 1)
-│   ├── functions_behaviour_rec.py # Behavioural analyses during recordings (Ext Fig 1–2)
+│   ├── functions_behaviour.py   # Behavioural analyses for training (Fig 1, Ext Fig 1)
+│   ├── functions_behaviour_rec.py # Behavioural analyses during recordings (Ext Fig 2)
 │   ├── functions_cells_regress.py # GLM regression / CPD analysis (Fig 4B)
 │   ├── functions_cells_rsa.py   # RSA across time (Fig 4C–E)
 │   ├── functions_cells_decode.py # SVM decoding across tasks (Fig 4F–G)
@@ -71,7 +72,8 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_behaviour.py        # Behavioural analyses (synthetic sessions)
 │   ├── test_decode.py           # Decoder (synthetic sessions)
 │   ├── test_port.py             # Port versus role decoding (synthetic sessions)
-│   └── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
+│   ├── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
+│   └── test_fixes.py            # One test per remaining fix in CORRECTIONS.md
 └── requirements.txt
 ```
 
@@ -100,7 +102,7 @@ The `--perms` argument (or `perms` variable in notebooks) controls the number of
   author={Samborska, Veronika and Butler, James L and Walton, Mark E and Behrens, Timothy EJ and Akam, Thomas},
   journal={Nature Neuroscience},
   volume={25},
-  pages={1382--1392},
+  pages={1314--1326},
   year={2022}
 }
 ```

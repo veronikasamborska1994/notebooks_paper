@@ -502,7 +502,7 @@ def out_of_sequence(experiment, first_task_only=False):
    
 
 def policy_training(experiment, subject_IDs='all'):
-    """Fit logistic regression of choice history predicting current choices (Fig 1I-J).
+    """Fit logistic regression of choice history predicting current choices (Fig 1I-L).
 
     For each session, fits a logistic regression with n-back choices, rewards,
     and choice x reward interactions as predictors. Coefficients are averaged
@@ -598,7 +598,7 @@ def policy_training(experiment, subject_IDs='all'):
        
    
 def plot_policy_during_training(experiment):
-    """Plot policy coefficients across training with repeated-measures ANOVA (Fig 1I-J).
+    """Plot policy coefficients across training with repeated-measures ANOVA (Fig 1I-L).
 
     Calls policy_training() to get logistic regression coefficients, then
     tests whether lag-1 and averaged higher-lag coefficients for choices

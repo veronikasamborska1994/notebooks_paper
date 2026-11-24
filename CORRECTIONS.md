@@ -2,8 +2,8 @@
 
 The code in this repository differs from the version used for the published paper
 (Samborska et al., Nat Neurosci 25, 1314-1326, 2022). The bugs below were found and fixed
-in November 2026. Every fix has a test in `tests/`, and all affected figures in `figures/`
-were regenerated on the full data set (5,000 session permutations; all 35 animal splits).
+in November 2026. Every fix has a test in `tests/`, and all figures in `figures/` were
+regenerated on the full data set (5,000 session permutations, random seed 0; all 35 animal splits).
 
 | # | Bug | Panels affected |
 |---|---|---|
@@ -17,7 +17,7 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 | 8 | Wrong subject labels in the repeated-measures ANOVA | Fig 1k, l |
 | 9 | Wrong upper error band on the choice-history weights | Fig 6a |
 | 10 | Layout-3 port correction skipped in the forced-trial analysis | Ext 2i, j |
-| 11 | Misplaced logic in the all-pokes out-of-sequence count | Ext 2e-g |
+| 11 | Misplaced logic in the all-pokes out-of-sequence count | Ext 2d-g |
 | 12 | Misplaced bracket in the selection of non-rewarded trials | Ext 4a-f |
 | 13 | Decoding null averaged one direction with itself | Fig 4g |
 | 14 | Decoding "Correct" significance used the wrong cell for B no-reward | Fig 4g |
@@ -26,12 +26,13 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
 | 17 | Decoding null was not built from the same quantity as the observed difference | Fig 4g |
 | 18 | The same error bar was drawn on every problem | Fig 1g |
 | 19 | The Port bar averaged the confusion-matrix cells that compare different physical ports | Fig 4g |
-| 20 | The reversal window started one trial early; sessions with a single reversal were left out, although every reversal with 10 trials on each side qualifies | Fig 1f (final: t(8) = -8.61, p < .001) |
+| 20 | The reversal window started one trial early; sessions with a single reversal were left out | Fig 1f (final: t(8) = -8.61, p < .001) |
 | 21 | Trials to threshold were carried over incorrectly across sessions; now every trial since the last reversal is counted | Fig 1e; Ext 1a |
 | 22 | Out-of-sequence poke counts were stored one trial late and blocks started on the last trial of the old block | Fig 1g, h; Ext 1b; Ext 2d-h |
 | 23 | The first block of each recording session was counted one trial short | Ext 2a-c |
 | 24 | The rewarded-streak counter selecting forced trials lagged by a trial and did not reset at an error | Ext 2i, j |
 | 25 | The policy regressor was built with choices coded differently from the logistic fit | Fig 6b-e; Ext 5c, d; Ext 7 |
+| 26 | The animal-split null distributions of the policy tests used a policy over 3 past trials instead of 11 (a variable was overwritten) | Ext 5c, d |
 
 ## Results that change
 
@@ -50,6 +51,8 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
   bins remain.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
   choice (5b), policy on A (5c, P = 2/35) and A (5d) do not reach P < 0.05.
+- Extended Data Fig 7f: policy on A choices now generalizes more strongly in PFC than CA1 (P < 0.05); the caption says it does not.
+- Extended Data Fig 9d, all time points, cellular and temporal vectors (animals as the unit): P = 2/35 = 0.057; printed above the threshold.
 - Large significance markers are P < 0.01, not P < 0.001.
 - Fig 1k, history of choices: F(9,72) = 2.71, P = 0.009 (printed as P = 0.773).
 
