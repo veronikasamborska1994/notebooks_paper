@@ -70,3 +70,20 @@ def test_port_cells_orientation_and_default():
     hp1[2, :, 4, 0] = 80; hp2[2, :, 0, 4] = 60           # same-port cells only
     assert np.allclose(dec.decoding_scores(hp1, hp2)['Port'], 70)
     assert np.allclose(dec.decoding_scores(hp1, hp2, same_port=False)['Port'], 0)
+
+
+def test_port_score_is_the_mean_of_the_boxed_cells():
+    import matplotlib
+    matplotlib.use('Agg')
+    rng = np.random.default_rng(2)
+    m = [rng.random((3, n, 7, 7)) * 100 for n in (3, 3, 4, 4)]
+    fig = dec.plot_port_pair(*m)
+    boxed = []
+    for ax in fig.axes[:4]:
+        box = [p for p in ax.patches if not p.get_fill()]
+        assert len(box) == 1
+        col, row = int(box[0].get_x() + 0.5), int(box[0].get_y() + 0.5)
+        boxed.append(np.asarray(ax.images[0].get_array())[row, col])
+    st = dec.decoding_statistics(*m)['Port']
+    assert np.isclose(np.mean(boxed[:2]), st['hp'].mean()) and np.isclose(np.mean(boxed[2:]), st['pfc'].mean())
+    dec.plt.close('all')

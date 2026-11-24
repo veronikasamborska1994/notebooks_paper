@@ -179,13 +179,40 @@ def decoding_statistics(hp1, hp2, pfc1, pfc2, same_port=True):
     return out
 
 
+def plot_port_pair(hp1, hp2, pfc1, pfc2):
+    """Confusion matrices of the layout 2/3 pair, one per region and direction (Fig 4F-G).
+
+    The green box is the cell in which the true and the decoded state share a physical port;
+    the Port bar is the mean of the boxed cells of a region.
+    """
+    cmap = palettable.scientific.sequential.Acton_3.mpl_colormap
+    fig, axs = plt.subplots(1, 4, figsize=(20, 5.5), constrained_layout=True)
+    panels = [(title, m[2].mean(0), cell) for region, m1, m2 in (('CA1', hp1, hp2), ('PFC', pfc1, pfc2))
+              for title, m, cell in ((region + '\ntrained on layout 2, tested on 3', m1, PORT_CELLS_SAME_PORT[0]),
+                                     (region + '\ntrained on layout 3, tested on 2', m2, PORT_CELLS_SAME_PORT[1]))]
+    for k, (ax, (title, conf, (row, col))) in enumerate(zip(axs, panels)):
+        img = ax.imshow(conf, cmap=cmap, vmin=0, vmax=100)
+        for i in range(7):
+            for j in range(7):
+                ax.text(j, i, '%.0f' % conf[i, j], ha='center', va='center', fontsize=9,
+                        color='black' if conf[i, j] > 60 else 'white')
+        ax.add_patch(plt.Rectangle((col - 0.5, row - 0.5), 1, 1, fill=False, edgecolor='limegreen', linewidth=3.5))
+        ax.set_title(title); ax.set_xlabel('Predicted')
+        ax.set_xticks(range(7)); ax.set_xticklabels(STATES, rotation='vertical')
+        ax.set_yticks(range(7)); ax.set_yticklabels(STATES if k == 0 else [])
+    axs[0].set_ylabel('Actual')
+    fig.colorbar(img, ax=axs, label='Decoding (%)', shrink=0.8)
+    return fig
+
+
 def plot(HP, PFC, same_port=True):
     """Plot cross-task decoding results (Fig 4F-G).
 
     Runs all permutations and plots:
     - Average confusion matrices for HP and PFC
     - Bar plots comparing correct, sequential, and port decoding patterns
-    - Statistical significance from animal-permutation tests.
+    - Statistical significance from animal-permutation tests
+    - Confusion matrices of the layout 2/3 pair, with the Port cells boxed.
 
     Parameters
     ----------
@@ -252,6 +279,6 @@ def plot(HP, PFC, same_port=True):
     data_ = {'Decoding': decode, 'Label': hp_str, 'Area':area}
     df = pd.DataFrame(data = data_)
     sns.swarmplot(x = "Label", y = "Decoding", hue = 'Area', palette="Set2", dodge = True, data = df)
-    sns.despine() 
-    
-    
+    sns.despine()
+
+    plot_port_pair(matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2)

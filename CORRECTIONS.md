@@ -42,6 +42,8 @@ were regenerated on the full data set (5,000 session permutations; all 35 animal
   different-port cell, because of bug 5). `dec.plot(HP, PFC, same_port=False)` uses the original cells with bug 5 fixed (PFC 13.5%).
   The result depends on the definition: also counting B reward at that port, averaged over cells, gives CA1 38.9%
   and PFC 25.5% (P = 3/35 = 0.086). The decoder uses the last six trials of each type and the two bins around each poke.
+- Fig 4f: the Port bar uses the layout 2/3 pair only, so `dec.plot` also draws those matrices with the Port cells boxed
+  (`figures/fig4fg_decode_3.png`).
 - Fig 4f, PFC matrix: changes slightly because of bug 5 (B choice decoded as Initiation 9% to 16%, as B choice 54% to 47%).
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
   bins remain, and the A versus B difference is a single bin.
