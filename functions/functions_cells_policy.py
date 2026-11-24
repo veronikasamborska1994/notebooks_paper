@@ -441,8 +441,9 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
         _thr = exact_perm_threshold
     else:
         _thr = lambda null, alpha: np.percentile(null, 100*(1 - alpha))
-    _95th_ba = _thr(max_ba_per_perm, 0.05)
-    indx_b_a_diff = np.where(diff_PFC_HP > _95th_ba)
+    _95th_ba = _thr(max_ba_per_perm, 0.05); _99th_ba = _thr(max_ba_per_perm, 0.01)
+    indx_b_a_diff_05 = np.where(diff_PFC_HP > _95th_ba)
+    indx_b_a_diff_01 = np.where(diff_PFC_HP > _99th_ba)
 
     # Max-statistic correction for A and B separately
     # PFC_HP_perm shape: (perm_n, 2, 3, n_timepoints) — 2=A/B, 3=init/ch/rew
@@ -480,9 +481,11 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
                     p_b_01 = significant_diff_b_01[1][np.where(significant_diff_b_01[0] == per)[0]]
                     axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink', label = 'B PFC vs CA1 < .05' if animal_perm else None)
                     axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = None if animal_perm else 'B PFC vs CA1 < .01')
-                    # B-A difference
-                    p_a_b = indx_b_a_diff[1][np.where(indx_b_a_diff[0] == per)[0]]
-                    axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
+                    # B - A difference: P < .05 (small dots) and P < .01 (large dots)
+                    p_ba_05 = indx_b_a_diff_05[1][np.where(indx_b_a_diff_05[0] == per)[0]]
+                    p_ba_01 = indx_b_a_diff_01[1][np.where(indx_b_a_diff_01[0] == per)[0]]
+                    axs[per].plot(p_ba_05, np.ones(p_ba_05.shape)*ymax + 0.08, '.', markersize = 2, color = 'grey', label = 'B - A PFC vs CA1 < .05' if animal_perm else None)
+                    axs[per].plot(p_ba_01, np.ones(p_ba_01.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey', label = None if animal_perm else 'B - A PFC vs CA1 < .01')
                     axs[per].set_xticks(_xticks)
                     axs[per].set_ylim(-0.15, ymax+0.1)
                     axs[per].set_xticklabels(XTICK_LABELS)

@@ -18,7 +18,8 @@ N_PERM = 5
 
 @pytest.fixture(scope='module')
 def permutation_figures():
-    """Run the time-resolved permutation tests once; return the nulls handed to np.percentile and the legend labels."""
+    """Run the time-resolved permutation tests once; return the shapes of the nulls handed to np.percentile
+    and the (label, size) of every significance marker that has a legend entry."""
     def blocks(rng, DM, fr):
         DM[:, 4] = np.arange(len(DM)) // 15                  # block number, used to roll the firing rates
     hp, pfc = data(hp=blocks, pfc=blocks); shapes, original = [], np.percentile
@@ -35,9 +36,10 @@ def permutation_figures():
         pol.plot_correlations_slice(pfc, hp, perm_n=N_PERM)
     finally:
         np.percentile = original
-    labels = [line.get_label() for n in plt.get_fignums() for ax in plt.figure(n).axes for line in ax.lines]
+    markers = [(line.get_label(), line.get_markersize()) for n in plt.get_fignums() for ax in plt.figure(n).axes
+               for line in ax.lines if line.get_marker() == '.' and not line.get_label().startswith('_')]
     plt.close('all')
-    return shapes, labels
+    return shapes, markers
 
 
 def test_1_maximum_over_time_is_taken_before_the_percentile(permutation_figures):
@@ -48,8 +50,10 @@ def test_1_maximum_over_time_is_taken_before_the_percentile(permutation_figures)
 
 
 def test_2_large_markers_are_labelled_p_01(permutation_figures):
-    _, labels = permutation_figures
-    assert any('< .01' in s for s in labels) and not any('.001' in s for s in labels)
+    _, markers = permutation_figures
+    assert len(markers) >= 10
+    for label, size in markers:                            # session permutations: only the large markers are in the legend
+        assert size == 4 and '< .01' in label and '.001' not in label
 
 
 def test_5_decoding_returns_both_directions_for_pfc():

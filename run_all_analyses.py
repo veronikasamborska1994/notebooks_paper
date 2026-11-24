@@ -2,10 +2,11 @@
 """Run all analyses and save figures as SVG + PNG.
 
 Usage:
-    python run_all_analyses.py [--perms N] [--data-path PATH] [--output-dir DIR] [--seed N]
+    python run_all_analyses.py [--perms N] [--data-path PATH] [--output-dir DIR] [--seed N] [--only TEXT]
 
 Defaults: 5000 permutations, random seed 0, figures saved to ./figures/
-The random number generator is reset to the seed before every step, so each figure is reproduced exactly.
+The random number generator is reset to the seed before every step, so each figure is reproduced exactly,
+also when it is run on its own (--only fig6c runs the steps whose file name contains "fig6c").
 """
 
 import argparse
@@ -29,6 +30,7 @@ parser.add_argument('--data-path', type=str,
                     help='Path to data folder')
 parser.add_argument('--output-dir', type=str, default='figures', help='Output directory for figures')
 parser.add_argument('--seed', type=int, default=0, help='Random seed, reset before every step (default: 0)')
+parser.add_argument('--only', type=str, default=None, help='Run only the steps whose file name contains this text')
 args = parser.parse_args()
 
 PERMS = args.perms
@@ -246,7 +248,11 @@ steps = [
      "ext9c_svd_dlc",
      lambda: SVD.plot_supplementary(HP_dlc, PFC_dlc, inds=np.arange(24, 39), animal_perm=False, n_perms=PERMS)),
 
-    ("Ext Fig 9D | SVD animal perms",
+    ("Ext Fig 9D | SVD all timepoints (animal perms)",
+     "ext9d_svd_animal_all",
+     lambda: SVD.plot_supplementary(HP, PFC, inds=np.arange(63), animal_perm=True, n_perms=PERMS)),
+
+    ("Ext Fig 9D | SVD init-choice (animal perms)",
      "ext9d_svd_animal",
      lambda: SVD.plot_supplementary(HP, PFC, inds=np.arange(24, 35), animal_perm=True, n_perms=PERMS)),
 ]
@@ -254,6 +260,10 @@ steps = [
 # ---------------------------------------------------------------------------
 # Run all steps with progress bar
 # ---------------------------------------------------------------------------
+if args.only:
+    steps = [step for step in steps if args.only in step[1]]
+    if not steps:
+        sys.exit(f"No step has a file name containing '{args.only}'")
 print(f"Running {len(steps)} analyses with {PERMS} permutations...\n")
 
 failed = []
