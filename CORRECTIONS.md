@@ -48,10 +48,11 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
   with every state labelled with its layout.
 - Fig 4f, PFC matrix: changes slightly because of bug 5 (B choice decoded as Initiation 9% to 16%, as B choice 54% to 47%).
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
-  bins remain, none at outcome time. The A versus B test (grey markers) has no significant bin, here and in
-  Extended Data Fig 7g; the paper reports a larger A versus B difference in CA1 at outcome time.
+  bins remain, none at outcome time. The A versus B comparison (grey markers) is removed from Fig 6e and
+  Extended Data Fig 5d and 7g: at most one bin reached P < 0.05, whichever way the difference was taken, so the
+  larger A versus B difference in CA1 at outcome time reported in the paper is not supported.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
-  choice (5b), policy on A (5c, P = 2/35), and A and A versus B (5d) do not reach P < 0.05.
+  choice (5b), policy on A (5c, P = 2/35), and A (5d) do not reach P < 0.05.
 - Extended Data Fig 7f: policy on A choices now generalizes more strongly in PFC than CA1 (P < 0.05); the caption says it does not.
 - Extended Data Fig 9d, all time points, cellular and temporal vectors (animals as the unit): P = 2/35 = 0.057; printed above the threshold.
 - Large significance markers are P < 0.01, not P < 0.001.
