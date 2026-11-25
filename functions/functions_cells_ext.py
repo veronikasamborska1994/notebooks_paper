@@ -21,7 +21,7 @@ from functions.helper_functions import task_ind
 def heatplot_sort_init_B(data, ch = 1, title_plot = 'PFC A choice '): 
     ''' Code used to evaluate the relative effects of conflict between problem general and port specific representations.
     Sort neural activity in Layout Type 2 and use this sorting to plot the activity in Layout Type 3. 
-    Choice B in Problem Layout 2 is Initiation in Problem Layout 3 but for comparison this function also plots A choices
+    Choice B in Problem Layout 3 is Initiation in Problem Layout 2 but for comparison this function also plots A choices
     that were in the same physical port.
     inputs are data (PFC vs CA1), ch (A or B choice), title_area (PFC/CA1) for plotting''' 
     
