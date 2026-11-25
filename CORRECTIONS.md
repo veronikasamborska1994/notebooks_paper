@@ -2,7 +2,8 @@
 
 The code in this repository differs from the version used for the published paper
 (Samborska et al., Nat Neurosci 25, 1314-1326, 2022). The bugs below were found and fixed
-in November 2026. Every fix has a test in `tests/`.
+in November 2026. Every fix has a test in `tests/`, and all figures in `figures/` were
+regenerated on the full data set (5,000 session permutations, random seed 0; all 35 animal splits).
 
 | # | Bug | Panels affected |
 |---|---|---|
@@ -47,8 +48,8 @@ in November 2026. Every fix has a test in `tests/`.
   with every state labelled with its layout.
 - Fig 4f, PFC matrix: changes slightly because of bug 5 (B choice decoded as Initiation 9% to 16%, as B choice 54% to 47%).
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
-  bins remain, none at outcome time. The A versus B test (grey markers) has no significant bin; the paper reports
-  a larger A versus B difference in CA1 at outcome time.
+  bins remain, none at outcome time. The A versus B test (grey markers) has no significant bin, here and in
+  Extended Data Fig 7g; the paper reports a larger A versus B difference in CA1 at outcome time.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
   choice (5b), policy on A (5c, P = 2/35), and A and A versus B (5d) do not reach P < 0.05.
 - Extended Data Fig 7f: policy on A choices now generalizes more strongly in PFC than CA1 (P < 0.05); the caption says it does not.

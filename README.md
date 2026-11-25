@@ -34,6 +34,8 @@ python run_all_analyses.py --data-path /path/to/data_share/ --perms 5000 --outpu
 
 Use `--perms 5` or `--perms 100` for a quick check. The paper used 5000 permutations. The random seed is reset before
 every step (`--seed`, default 0), so each figure is reproduced exactly; `--only fig6c` runs a single step.
+With 5000 permutations the two GLM steps (`fig4b`, `ext5a`) hold every permutation of every neuron in memory, more than
+60 GB at the peak; with less memory they run from swap, so do not run them in parallel.
 
 ### Option 2: Jupyter notebooks
 
@@ -75,7 +77,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_port.py             # Port versus role decoding (synthetic sessions)
 │   ├── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
 │   └── test_fixes.py            # One test per remaining fix in CORRECTIONS.md
-├── figures/                     # Output of run_all_analyses.py (PNG)
+├── figures/                     # Output of run_all_analyses.py (PNG; 5,000 permutations, seed 0)
 └── requirements.txt
 ```
 
