@@ -221,7 +221,7 @@ def meta_learning_reversals(experiment):
             state_around_block = []; choice_around_block = []
             block_transitions_id = np.where(block_transitions == 1)[0]
                                         
-            if len(block_transitions_id) > 1: # if block transition happened during the session
+            if len(block_transitions_id) > 0: # if block transition happened during the session
                 for b in block_transitions_id:
                     if b > tr and (b + 1 + tr) <= len(state): # only take blocks for which all 10 post and 10 pre reversal trials exist in a single session
                         state_around_block.append(state[b + 1 - tr: b + 1 + tr]) # b is the last trial of the old block, so index tr is the first trial of the new one
@@ -502,7 +502,7 @@ def out_of_sequence(experiment, first_task_only=False):
    
 
 def policy_training(experiment, subject_IDs='all'):
-    """Fit logistic regression of choice history predicting current choices (Fig 1I-J).
+    """Fit logistic regression of choice history predicting current choices (Fig 1I-L).
 
     For each session, fits a logistic regression with n-back choices, rewards,
     and choice x reward interactions as predictors. Coefficients are averaged
@@ -598,7 +598,7 @@ def policy_training(experiment, subject_IDs='all'):
        
    
 def plot_policy_during_training(experiment):
-    """Plot policy coefficients across training with repeated-measures ANOVA (Fig 1I-J).
+    """Plot policy coefficients across training with repeated-measures ANOVA (Fig 1I-L).
 
     Calls policy_training() to get logistic regression coefficients, then
     tests whether lag-1 and averaged higher-lag coefficients for choices

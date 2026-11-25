@@ -149,8 +149,8 @@ def decoding_scores(m1, m2, same_port=True):
     m1 = np.asarray(m1); m2 = np.asarray(m2)
     av = np.mean([m1, m2], 0).mean(0)
     (r1, c1), (r2, c2) = PORT_CELLS_SAME_PORT if same_port else PORT_CELLS_PUBLISHED
-    return {'Correct': np.mean([av[:, i, i] for i in (4, 5, 6)], 0),
-            'Position in Trial Sequence': np.mean([av[:, 4, 1], av[:, 5, 2], av[:, 6, 3]], 0),
+    return {'Correct': np.mean([av[:, r, c] for r, c in CORRECT_CELLS], 0),
+            'Position in Trial Sequence': np.mean([av[:, r, c] for r, c in POSITION_CELLS], 0),
             'Port': np.mean([m1[2][:, r1, c1], m2[2][:, r2, c2]], 0)}
 
 
@@ -179,13 +179,51 @@ def decoding_statistics(hp1, hp2, pfc1, pfc2, same_port=True):
     return out
 
 
+# Cells (true row, predicted column) of the averaged matrix used for the other two bars of Fig 4G
+CORRECT_CELLS = ((4, 4), (5, 5), (6, 6))
+POSITION_CELLS = ((4, 1), (5, 2), (6, 3))
+
+
+def plot_matrices(hp1, hp2, pfc1, pfc2):
+    """Confusion matrices that the bars of Fig 4G are computed from (Fig 4F).
+
+    One row per region. Left: average over all layout pairs and both directions, with the cells of the
+    Correct (blue) and Position (red) bars. Middle and right: the layout 2/3 pair in each direction, with the
+    cell in which the true and the decoded state share a physical port (green); the Port bar is the mean of
+    the two green cells. Rows are the true states, columns the decoded states, in percent.
+    """
+    cmap = palettable.scientific.sequential.Acton_3.mpl_colormap
+    names = ['I%s', 'A%s choice', 'A%s reward', 'A%s no-reward', 'B%s choice', 'B%s reward', 'B%s no-reward']
+    fig, axs = plt.subplots(2, 3, figsize=(19, 13), constrained_layout=True)
+    for row, (region, m1, m2) in enumerate((('CA1', hp1, hp2), ('PFC', pfc1, pfc2))):
+        m1 = np.asarray(m1); m2 = np.asarray(m2)
+        panels = ((region + ': all layout pairs, both directions', np.mean([m1, m2], 0).mean((0, 1)), '', '',
+                   [(c, 'deepskyblue') for c in CORRECT_CELLS] + [(c, 'red') for c in POSITION_CELLS]),
+                  (region + ': trained on layout 2, tested on layout 3', m1[2].mean(0), 2, 3, [(PORT_CELLS_SAME_PORT[0], 'limegreen')]),
+                  (region + ': trained on layout 3, tested on layout 2', m2[2].mean(0), 3, 2, [(PORT_CELLS_SAME_PORT[1], 'limegreen')]))
+        for ax, (title, conf, train, test, boxes) in zip(axs[row], panels):
+            img = ax.imshow(conf, cmap=cmap, vmin=0, vmax=100)
+            for i in range(7):
+                for j in range(7):
+                    ax.text(j, i, '%.0f' % conf[i, j], ha='center', va='center', fontsize=9, color='black' if conf[i, j] > 60 else 'white')
+            for (r, c), colour in boxes:
+                ax.add_patch(plt.Rectangle((c - 0.5, r - 0.5), 1, 1, fill=False, edgecolor=colour, linewidth=3.5))
+            ax.set_title(title)
+            ax.set_xlabel('Predicted' + (' (layout %s states)' % train if train else ''))
+            ax.set_ylabel('Actual' + (' (layout %s states)' % test if test else ''))
+            ax.set_xticks(range(7)); ax.set_xticklabels([n % train for n in names], rotation='vertical')
+            ax.set_yticks(range(7)); ax.set_yticklabels([n % test for n in names])
+    fig.colorbar(img, ax=axs, label='Decoding (%)', shrink=0.6)
+    return fig
+
+
 def plot(HP, PFC, same_port=True):
     """Plot cross-task decoding results (Fig 4F-G).
 
     Runs all permutations and plots:
-    - Average confusion matrices for HP and PFC
+    - The confusion matrices the bars are computed from (Fig 4F)
     - Bar plots comparing correct, sequential, and port decoding patterns
-    - Statistical significance from animal-permutation tests.
+    - Statistical significance from animal-permutation tests
 
     Parameters
     ----------
@@ -198,28 +236,7 @@ def plot(HP, PFC, same_port=True):
 
     perm_all, perm_all_2, matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2 =  permute_subjects(HP, PFC) 
     stats = decoding_statistics(matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2, same_port)
-    cmap =  palettable.scientific.sequential.Acton_3.mpl_colormap
-    
-    # plot average decoding matrices between all task pairs
-    av_pfc_tasks = np.mean(np.mean(np.mean([matrix_pfc_1,matrix_pfc_2],0),0),0)
-    av_hp_tasks = np.mean(np.mean(np.mean([matrix_hp_1,matrix_hp_2],0),0),0)
-
-    fig, axs = plt.subplots(1,2, figsize=(10, 5)); 
-    titles = ['HP', 'PFC']
-    for c, conf in enumerate([av_hp_tasks, av_pfc_tasks]):
-        img = axs[c].imshow(conf,cmap = cmap, vmin = 0, vmax = 100)
-        axs[c].set_xticks(range(7))
-        axs[c].set_xticklabels(['Initiation','A choice', 'A reward', 'A no-reward',\
-                                  'B choice', 'B reward', 'B no-reward'], rotation = 'vertical')
-        if c == 0:
-            axs[c].set_yticks(range(7))
-            axs[c].set_yticklabels(['Initiation','A choice', 'A reward', 'A no-reward',\
-                                      'B choice', 'B reward', 'B no-reward'])
-        else:
-            axs[c].set_yticks([])
-        axs[c].set_title(titles[c])
-
-    fig.colorbar(img, ax = axs)
+    plot_matrices(matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2)
 
     subj_hp_gen, subj_hp_seq, subj_hp_b = [stats[k]['hp'] for k in stats]
     subj_pfc_gen, subj_pfc_seq, subj_pfc_b = [stats[k]['pfc'] for k in stats]
@@ -252,6 +269,4 @@ def plot(HP, PFC, same_port=True):
     data_ = {'Decoding': decode, 'Label': hp_str, 'Area':area}
     df = pd.DataFrame(data = data_)
     sns.swarmplot(x = "Label", y = "Decoding", hue = 'Area', palette="Set2", dodge = True, data = df)
-    sns.despine() 
-    
-    
+    sns.despine()

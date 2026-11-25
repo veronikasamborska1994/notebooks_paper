@@ -154,12 +154,12 @@ def _coefs(shared_a, shared_b, seed=5, n_neurons=400, nt=63):
 
 
 def test_b_minus_a_direction():
-    """CA1 with a larger A - B gap than PFC must give a positive '(B - A) PFC - CA1' difference, and the reverse a negative one."""
+    """As published: the difference is (A - B) PFC - (A - B) CA1, so it is positive where CA1 has the larger B - A gap."""
     gap, none = _coefs(0.8, 0.1), _coefs(0.5, 0.5)
     diff, _ = pol._compute_perm_result(*gap, *none, 1, [24, 35, 42])
-    assert np.all(diff > 0.2)
-    diff, _ = pol._compute_perm_result(*none, *gap, 1, [24, 35, 42])
     assert np.all(diff < -0.2)
+    diff, _ = pol._compute_perm_result(*none, *gap, 1, [24, 35, 42])
+    assert np.all(diff > 0.2)
 
 
 def test_policy_slice_null_identity_split_equals_real_split():
@@ -168,4 +168,4 @@ def test_policy_slice_null_identity_split_equals_real_split():
     assert len(diff) == 35
     real, real_ab = pol._compute_perm_result(*pol.policy_A_B(hp, n=11, perm=False), *pol.policy_A_B(pfc, n=11, perm=False), 1, [24, 35, 42])
     assert np.allclose(diff[-1], real) and np.allclose(pfc_hp[-1], real_ab)
-    assert np.allclose(real, (np.asarray(real_ab)[1] - np.asarray(real_ab)[0]))
+    assert np.allclose(real, (np.asarray(real_ab)[0] - np.asarray(real_ab)[1]))

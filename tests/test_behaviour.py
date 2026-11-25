@@ -162,15 +162,20 @@ class RecCaptured(Exception):
     pass
 
 
-def rec_pokes(wrong_trial):
-    """Reversal means of the first problem (4 blocks of 5 trials per problem, 3 problems)."""
+def rec_pokes(wrong_trial, pokes=('A', 'B'), only_A_B=True):
+    """Reversal means of the first problem (4 blocks of 5 trials per problem, 3 problems).
+
+    On `wrong_trial` the animal makes `pokes` once the choice state has started ('other' is a port of
+    another problem); on every other trial it chooses A.
+    """
     from functions import functions_behaviour_rec as fr
     n = 70; tl = np.arange(n)
     block = tl // 5; task = np.minimum(tl // 20, 2) + 1
     events = []
     for t in range(n):
-        a = {1: 'poke_1', 2: 'poke_3', 3: 'poke_5'}[task[t]]; b = {1: 'poke_2', 2: 'poke_4', 3: 'poke_6'}[task[t]]
-        events += ['init_trial', 'choice_state', a] + ([b] if t == wrong_trial else [])
+        port = {'A': {1: 'poke_1', 2: 'poke_3', 3: 'poke_5'}[task[t]], 'B': {1: 'poke_2', 2: 'poke_4', 3: 'poke_6'}[task[t]],
+                'other': 'poke_3' if task[t] == 1 else 'poke_1'}
+        events += ['init_trial', 'choice_state'] + [port[k] for k in (pokes if t == wrong_trial else ('A',))]
     s = Session(block=block, task=task, configuration_i=np.full(n, 9),
                 poke_A=np.array([1, 3, 5])[task - 1], poke_B=np.array([2, 4, 6])[task - 1])
     s.events = [Ev(e) for e in events]
@@ -185,7 +190,7 @@ def rec_pokes(wrong_trial):
         def get_sessions(self):
             return [s] * 8                        # 8 sessions x 3 problems = the 24 expected
     try:
-        fr.out_of_sequence_recordings([Subject(), Subject()])
+        fr.out_of_sequence_recordings([Subject(), Subject()], only_A_B=only_A_B)
     except RecCaptured:
         pass
     finally:
@@ -227,3 +232,16 @@ def test_recordings_trials_to_threshold_counts_first_block_fully():
 def test_rewarded_streak_resets_on_first_error():
     from functions.functions_behaviour_rec import rewarded_streak
     assert list(rewarded_streak([1, 1, 1, 0, 1, 1, 0, 0, 1])) == [0, 1, 2, 3, 0, 1, 2, 0, 0]
+
+
+def test_fig1f_uses_sessions_with_a_single_reversal():
+    # each session has one reversal; both directions are needed (A to B and B to A)
+    def one_reversal(first_state):
+        block = np.r_[np.zeros(30, int), np.ones(30, int)]
+        state = (first_state + block) % 2
+        return Session(block=block, forced_trial=np.zeros(60, int), state=state, choices=state.copy())
+    fb.plt.close('all')
+    fb.meta_learning_reversals(Experiment([one_reversal(0), one_reversal(1)]))
+    for line in fb.plt.gca().get_lines()[:2]:
+        assert np.allclose(line.get_ydata(), np.r_[np.zeros(10), np.ones(10)])
+    fb.plt.close('all')

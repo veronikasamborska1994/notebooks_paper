@@ -70,3 +70,24 @@ def test_port_cells_orientation_and_default():
     hp1[2, :, 4, 0] = 80; hp2[2, :, 0, 4] = 60           # same-port cells only
     assert np.allclose(dec.decoding_scores(hp1, hp2)['Port'], 70)
     assert np.allclose(dec.decoding_scores(hp1, hp2, same_port=False)['Port'], 0)
+
+
+def test_every_bar_is_the_mean_of_its_boxed_cells():
+    import matplotlib
+    matplotlib.use('Agg')
+    rng = np.random.default_rng(2)
+    m = [rng.random((3, n, 7, 7)) * 100 for n in (3, 3, 4, 4)]
+    fig = dec.plot_matrices(*m)
+    st = dec.decoding_statistics(*m)
+    for row, region in enumerate(('hp', 'pfc')):
+        found = {}
+        for ax in fig.axes[3 * row:3 * row + 3]:
+            conf = np.asarray(ax.images[0].get_array())
+            for box in ax.patches:
+                colour = matplotlib.colors.to_hex(box.get_edgecolor())
+                found.setdefault(colour, []).append(conf[int(box.get_y() + 0.5), int(box.get_x() + 0.5)])
+        hexes = {c: matplotlib.colors.to_hex(c) for c in ('deepskyblue', 'red', 'limegreen')}
+        for name, colour, n in (('Correct', 'deepskyblue', 3), ('Position in Trial Sequence', 'red', 3), ('Port', 'limegreen', 2)):
+            assert len(found[hexes[colour]]) == n
+            assert np.isclose(np.mean(found[hexes[colour]]), st[name][region].mean())
+    dec.plt.close('all')

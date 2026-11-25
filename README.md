@@ -2,6 +2,10 @@
 
 Code for reproducing all figures in [Samborska, Butler, Walton, Behrens & Akam (2022) *Nature Neuroscience*](https://doi.org/10.1038/s41593-022-01149-8).
 
+## Corrections
+
+The analysis code has been corrected since publication. [CORRECTIONS.md](CORRECTIONS.md) lists each bug, the panels it affects and the results that change.
+
 ## Data
 
 Download behavioural and neural data from [figshare](https://doi.org/10.6084/m9.figshare.19773334) and place it in a local folder.
@@ -28,7 +32,10 @@ Runs all analysis steps and saves figures as SVG + PNG:
 python run_all_analyses.py --data-path /path/to/data_share/ --perms 5000 --output-dir figures
 ```
 
-Use `--perms 5` or `--perms 100` for a quick check. The paper used 5000 permutations.
+Use `--perms 5` or `--perms 100` for a quick check. The paper used 5000 permutations. The random seed is reset before
+every step (`--seed`, default 0), so each figure is reproduced exactly; `--only fig6c` runs a single step.
+With 5000 permutations the two GLM steps (`fig4b`, `ext5a`) hold every permutation of every neuron in memory, more than
+60 GB at the peak; with less memory they run from swap, so do not run them in parallel.
 
 ### Option 2: Jupyter notebooks
 
@@ -43,6 +50,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 ## Repository structure
 
 ```
+├── CORRECTIONS.md               # Bugs fixed since publication and the results that change
 ├── run_all_analyses.py          # Standalone script to run all analyses
 ├── behaviour.ipynb              # Behavioural analysis notebook
 ├── cells - main figures.ipynb   # Neural main figures notebook
@@ -52,11 +60,12 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── RSAs.py                  # Representational dissimilarity matrices
 │   ├── data_import.py           # Import training behavioural data (pyControl)
 │   ├── data_import_ephys.py     # Import recording behavioural data (pyControl)
-│   ├── functions_behaviour.py   # Behavioural analyses for training (Fig 1)
-│   ├── functions_behaviour_rec.py # Behavioural analyses during recordings (Ext Fig 1–2)
+│   ├── functions_behaviour.py   # Behavioural analyses for training (Fig 1, Ext Fig 1)
+│   ├── functions_behaviour_rec.py # Behavioural analyses during recordings (Ext Fig 2)
 │   ├── functions_cells_regress.py # GLM regression / CPD analysis (Fig 4B)
 │   ├── functions_cells_rsa.py   # RSA across time (Fig 4C–E)
 │   ├── functions_cells_decode.py # SVM decoding across tasks (Fig 4F–G)
+│   ├── functions_cells_port.py  # Post hoc port versus role decoding (not in the paper)
 │   ├── functions_cells_svd.py   # SVD population pattern analysis (Fig 5)
 │   ├── functions_cells_policy.py # Neural correlates of behavioural policy (Fig 6)
 │   ├── functions_cells_ext.py   # Extended data neural analyses (Ext Fig 4, 8)
@@ -65,7 +74,10 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_validation.py       # Core functions
 │   ├── test_behaviour.py        # Behavioural analyses (synthetic sessions)
 │   ├── test_decode.py           # Decoder (synthetic sessions)
-│   └── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
+│   ├── test_port.py             # Port versus role decoding (synthetic sessions)
+│   ├── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
+│   └── test_fixes.py            # One test per remaining fix in CORRECTIONS.md
+├── figures/                     # Output of run_all_analyses.py (PNG; 5,000 permutations, seed 0)
 └── requirements.txt
 ```
 
@@ -84,7 +96,7 @@ Permutation tests shuffle sessions between brain regions (HP vs PFC) to test for
 - **Session shuffle**: randomly reassign sessions to regions
 - **Animal shuffle**: enumerate all possible splits of 7 animals into HP-sized (3) and PFC-sized (4) groups
 
-The `--perms` argument (or `perms` variable in notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits and use exact rank-based P values (the smallest possible P is 1/35 = 0.029).
+The `--perms` argument (`perms` or `n_perms` in the notebooks) controls the number of session-shuffle permutations. Animal-shuffle permutations enumerate all C(7,3) = 35 splits and use exact rank-based P values (the smallest possible P is 1/35 = 0.029).
 
 ## Citation
 
@@ -94,7 +106,7 @@ The `--perms` argument (or `perms` variable in notebooks) controls the number of
   author={Samborska, Veronika and Butler, James L and Walton, Mark E and Behrens, Timothy EJ and Akam, Thomas},
   journal={Nature Neuroscience},
   volume={25},
-  pages={1382--1392},
+  pages={1314--1326},
   year={2022}
 }
 ```

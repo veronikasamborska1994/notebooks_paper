@@ -2,9 +2,11 @@
 """Run all analyses and save figures as SVG + PNG.
 
 Usage:
-    python run_all_analyses.py [--perms N] [--data-path PATH] [--output-dir DIR]
+    python run_all_analyses.py [--perms N] [--data-path PATH] [--output-dir DIR] [--seed N] [--only TEXT]
 
-Defaults: 5000 permutations, figures saved to ./figures/
+Defaults: 5000 permutations, random seed 0, figures saved to ./figures/
+The random number generator is reset to the seed before every step, so each figure is reproduced exactly,
+also when it is run on its own (--only fig6c runs the steps whose file name contains "fig6c").
 """
 
 import argparse
@@ -15,6 +17,7 @@ import time
 import matplotlib
 matplotlib.use('Agg')  # non-interactive backend for script mode
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
 
 # ---------------------------------------------------------------------------
@@ -26,11 +29,14 @@ parser.add_argument('--data-path', type=str,
                     default='/Users/veronikasamborska/Desktop/paper_nn_code_data/data_share/',
                     help='Path to data folder')
 parser.add_argument('--output-dir', type=str, default='figures', help='Output directory for figures')
+parser.add_argument('--seed', type=int, default=0, help='Random seed, reset before every step (default: 0)')
+parser.add_argument('--only', type=str, default=None, help='Run only the steps whose file name contains this text')
 args = parser.parse_args()
 
 PERMS = args.perms
 DATA_PATH = args.data_path
 OUTPUT_DIR = args.output_dir
+SEED = args.seed
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -38,11 +44,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # ---------------------------------------------------------------------------
 def save_figures(prefix, figs_before):
     """Save any new figures that appeared since figs_before snapshot."""
-    figs_after = set(plt.get_fignums())
-    new_figs = sorted(figs_after - figs_before)
-    if not new_figs:
-        # If no new figures, save whatever is current
-        new_figs = sorted(figs_after - figs_before) if figs_after else []
+    new_figs = sorted(set(plt.get_fignums()) - figs_before)
     saved = []
     for i, fig_num in enumerate(new_figs):
         fig = plt.figure(fig_num)
@@ -58,6 +60,7 @@ def save_figures(prefix, figs_before):
 def run_step(description, prefix, func, *a, **kw):
     """Run an analysis step, save figures, print timing."""
     figs_before = set(plt.get_fignums())
+    np.random.seed(SEED)  # same seed at the start of every step: each figure can be reproduced on its own
     t0 = time.time()
     func(*a, **kw)
     elapsed = time.time() - t0
@@ -77,12 +80,12 @@ from functions import data_import as di_beh
 from functions import functions_cells_regress as regs
 from functions import functions_cells_rsa as rsas
 from functions import functions_cells_decode as dec
+from functions import functions_cells_port as port
 from functions import functions_cells_svd as SVD
 from functions import functions_cells_policy as pol
 from functions import functions_cells_ext as ext
 from functions import plot_neurons as plot_n
 from scipy import io
-import numpy as np
 
 # ---------------------------------------------------------------------------
 # Load data
@@ -113,7 +116,7 @@ steps = [
      "fig1d_session_plot",
      lambda: fun_beh.session_plot_moving_average(exp_train.sessions[-1])),
 
-    ("Fig 1E  | Trials to reversal",
+    ("Fig 1E, Ext Fig 1A | Trials to threshold",
      "fig1e_trials_reversal",
      lambda: fun_beh.trials_till_reversal_plot(exp_train)),
 
@@ -121,11 +124,11 @@ steps = [
      "fig1f_meta_learning",
      lambda: fun_beh.meta_learning_reversals(exp_train)),
 
-    ("Fig 1G-H | Out of sequence pokes",
+    ("Fig 1G-H, Ext Fig 1B | Out of sequence pokes",
      "fig1gh_out_of_sequence",
      lambda: fun_beh.out_of_sequence(exp_train, first_task_only=False)),
 
-    ("Fig 1I-J | Policy during training",
+    ("Fig 1I-L | Policy during training",
      "fig1ij_policy_training",
      lambda: fun_beh.plot_policy_during_training(exp_train)),
 
@@ -134,7 +137,7 @@ steps = [
      "ext2ac_reversals_rec",
      lambda: fun_beh_rec.trials_till_reversal_plot_recordings(exp_rec)),
 
-    ("Ext Fig 2D-F | Out of sequence (A/B pokes only)",
+    ("Ext Fig 2H | Out of sequence (A/B pokes only)",
      "ext2df_oos_rec",
      lambda: fun_beh_rec.out_of_sequence_recordings(exp_rec, only_A_B=True)),
 
@@ -163,15 +166,19 @@ steps = [
      "fig4fg_decode",
      lambda: dec.plot(HP, PFC)),
 
-    ("Fig 5A-C | SVD example patterns",
+    ("Post hoc  | Port vs role decoding over time (not in the paper)",
+     "posthoc_port_over_time",
+     lambda: port.plot_port_over_time(HP, PFC)),
+
+    ("Fig 5B-C | SVD example patterns",
      "fig5ac_svd_examples",
      lambda: SVD.plot_example_patterns(PFC)),
 
-    ("Fig 5D-E | SVD between brains",
+    ("Fig 5E   | SVD between brains",
      "fig5de_svd_brains",
      lambda: SVD.svd_between_brains(HP_dlc, PFC_dlc)),
 
-    ("Fig 5D-H | SVD main figure (session perms)",
+    ("Fig 5D, F-J | SVD main figure (session perms)",
      "fig5dh_svd_main",
      lambda: SVD.plot_main_figure(HP, PFC, HP_dlc, PFC_dlc, n_perms=PERMS)),
 
@@ -183,11 +190,11 @@ steps = [
      "fig6b_policy_glm",
      lambda: pol.plot_policy_simple_GLM(HP, PFC, n_perm=PERMS, n=11, dlc=False)),
 
-    ("Fig 6C   | Policy correlations",
+    ("Fig 6E   | Policy correlation slices",
      "fig6c_policy_corr",
      lambda: pol.plot_correlations_slice(PFC, HP, n=11, c_1=1, perm_n=PERMS, dlc=False, animal_perm=False)),
 
-    ("Fig 6D   | Policy diagonal sums",
+    ("Fig 6C-D | Policy correlation matrices and diagonal sums",
      "fig6d_policy_diag",
      lambda: pol.plot_diagonal_sums(HP, PFC, perm_n=PERMS, dlc=False)),
 
@@ -213,15 +220,15 @@ steps = [
      "ext7_dlc_rsa",
      lambda: rsas.RSA_across_time_plot(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
 
-    ("Ext Fig 7 | Policy GLM (DLC residuals)",
+    ("Ext Fig 7 | Policy GLM (DLC residuals; not a printed panel)",
      "ext7_dlc_policy_glm",
      lambda: pol.plot_policy_simple_GLM(HP_dlc, PFC_dlc, n_perm=PERMS, n=11, dlc=True)),
 
-    ("Ext Fig 7 | Policy correlations (DLC residuals)",
+    ("Ext Fig 7G | Policy correlation slices (DLC residuals)",
      "ext7_dlc_policy_corr",
      lambda: pol.plot_correlations_slice(PFC_dlc, HP_dlc, n=11, c_1=1, perm_n=PERMS, dlc=True, animal_perm=False)),
 
-    ("Ext Fig 7 | Policy diagonal sums (DLC residuals)",
+    ("Ext Fig 7F | Policy diagonal sums (DLC residuals)",
      "ext7_dlc_diagonal",
      lambda: pol.plot_diagonal_sums(HP_dlc, PFC_dlc, perm_n=PERMS, dlc=True)),
 
@@ -241,7 +248,11 @@ steps = [
      "ext9c_svd_dlc",
      lambda: SVD.plot_supplementary(HP_dlc, PFC_dlc, inds=np.arange(24, 39), animal_perm=False, n_perms=PERMS)),
 
-    ("Ext Fig 9D | SVD animal perms",
+    ("Ext Fig 9D | SVD all timepoints (animal perms)",
+     "ext9d_svd_animal_all",
+     lambda: SVD.plot_supplementary(HP, PFC, inds=np.arange(63), animal_perm=True, n_perms=PERMS)),
+
+    ("Ext Fig 9D | SVD init-choice (animal perms)",
      "ext9d_svd_animal",
      lambda: SVD.plot_supplementary(HP, PFC, inds=np.arange(24, 35), animal_perm=True, n_perms=PERMS)),
 ]
@@ -249,8 +260,13 @@ steps = [
 # ---------------------------------------------------------------------------
 # Run all steps with progress bar
 # ---------------------------------------------------------------------------
+if args.only:
+    steps = [step for step in steps if args.only in step[1]]
+    if not steps:
+        sys.exit(f"No step has a file name containing '{args.only}'")
 print(f"Running {len(steps)} analyses with {PERMS} permutations...\n")
 
+failed = []
 pbar = tqdm(steps, desc="Analyses", unit="step", ncols=100)
 for desc, prefix, func in pbar:
     pbar.set_description(desc)
@@ -258,7 +274,13 @@ for desc, prefix, func in pbar:
         run_step(desc, prefix, func)
     except Exception as e:
         tqdm.write(f"  !! ERROR in {desc}: {e}")
+        failed.append(desc)
         plt.close('all')
     gc.collect()
 
+if failed:
+    print(f"\n{len(failed)} of {len(steps)} steps failed:")
+    for desc in failed:
+        print(f"  {desc}")
+    sys.exit(1)
 print(f"\nDone! All figures saved to {OUTPUT_DIR}/")

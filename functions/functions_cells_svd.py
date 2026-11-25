@@ -11,7 +11,7 @@ Key functions:
 - svd / real_diff: compute explained variance differences between regions
 - svd_between_brains: project one region's data onto another's SVD modes
 - permute / run_permutations_and_plot: session-shuffle permutation tests
-- plot_main_figure: main plotting function (Figure 5D-H)
+- plot_main_figure: main plotting function (Figure 5D, F-J)
 """
 
 import numpy as np
@@ -485,14 +485,14 @@ def plot_main_figure(HP, PFC, HP_dlc, PFC_dlc, n_perms = 5):
     plt.ylabel('Cumulative Weight')
     plt.title('Cellular and Temporal Modes with Cell Shuffle')    
 
-    #Plot Fig 4H
+    # Plot Fig 5H
     plt.figure(figsize = (8,2))
     plt.subplot(1,3,1)
     run_permutations_and_plot(HP_dlc, PFC_dlc, d = True, p = n_perms, axis = 0)
-    # Plot Fig 4I
+    # Plot Fig 5I
     plt.subplot(1,3,2)
     run_permutations_and_plot(HP_dlc, PFC_dlc, d = True, p = n_perms, axis = 1)
-    # Plot Fig 4J
+    # Plot Fig 5J
     plt.subplot(1,3,3)
     run_permutations_and_plot(HP_dlc, PFC_dlc, d = False, p = n_perms)
     plt.tight_layout()

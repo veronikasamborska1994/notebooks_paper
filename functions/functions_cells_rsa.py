@@ -6,8 +6,8 @@ whether representations are task-general using session-shuffle and
 animal-shuffle permutations.
 
 Key functions:
-- extract_trials: extract trial-averaged firing rates by condition
-- regression_RSA: fit RDMs to neural RDMs using CPD
+- extract_trials: trial-averaged firing rates by condition for one time window (reference implementation)
+- _extract_all_times, _build_matrix: the same matrix for every time window at once
 - RSA_across_time_plot: main plotting function (Figure 4C-E)
 """
 
@@ -216,110 +216,6 @@ def _build_rdm_X(dlc):
         return np.vstack([choice_ab_rsa, reward_no_reward, reward_at_choices, choice_initiation_rsa, a_specific, ones]).T
 
 
-def _one_perm_rsa(all_subjects_DM, all_subjects_fr, n_hp_sessions, X, t_start, t_end, perm_n, animal_perm):
-    '''Single permutation iteration for regression_RSA (session-shuffle branch).'''
-    n_sessions = np.arange(len(all_subjects_DM))
-    np.random.shuffle(n_sessions)
-    indices_HP = n_sessions[:n_hp_sessions]; indices_PFC = n_sessions[n_hp_sessions:]
-    data_PFC = [all_subjects_DM[indices_PFC], all_subjects_fr[indices_PFC]]
-    data_HP  = [all_subjects_DM[indices_HP],  all_subjects_fr[indices_HP]]
-
-    m_pfc = extract_trials(data_PFC, t_start, t_end, perm_n=perm_n, animal_perm=animal_perm)
-    m_pfc = np.corrcoef(m_pfc); np.fill_diagonal(m_pfc, np.nan); m_pfc = m_pfc.flatten()
-    y_pfc = m_pfc[~np.isnan(m_pfc)]
-
-    m_hp = extract_trials(data_HP, t_start, t_end, perm_n=perm_n, animal_perm=animal_perm)
-    m_hp = np.corrcoef(m_hp); np.fill_diagonal(m_hp, np.nan); m_hp = m_hp.flatten()
-    y_hp = m_hp[~np.isnan(m_hp)]
-
-    return _cpd(X, y_pfc), _cpd(X, y_hp)
-
-
-def regression_RSA(HP, PFC, t_start, t_end, perm_n=False, animal_perm=False, dlc=False):
-    """Fit RDMs to neural correlation matrices using CPD regression (Fig 4C-E).
-
-    Computes neural RDMs (Pearson correlation between condition-averaged
-    firing rates) separately for HP and PFC, then regresses model RDMs
-    against them. Optionally runs session-shuffle or animal-shuffle
-    permutation tests.
-
-    Parameters
-    ----------
-    HP, PFC : dict or list
-        Neural data (raw dict or permuted list).
-    t_start, t_end : int
-        Time indices for the analysis window.
-    perm_n : int or bool
-        Number of session-shuffle permutations. False for no permutation.
-    animal_perm : bool
-        If True, use animal-shuffle permutations instead.
-    dlc : bool
-        If True, exclude the port RDM (already regressed out via DLC).
-
-    Returns
-    -------
-    None (plots figures directly).
-    """
-    # extract firing rates for HP data and compute a correlation matrix
-    matrix_for_correlations_HP = extract_trials(HP, t_start, t_end, perm_n = False, animal_perm = animal_perm)
-    correlation_m = np.corrcoef(matrix_for_correlations_HP)
-    np.fill_diagonal(correlation_m,np.nan); correlation_m_f = correlation_m.flatten()
-    correlation_m_f = correlation_m_f[~np.isnan(correlation_m_f)]
-
-    # extract firing rates for PFC data and compute a correlation matrix
-    matrix_for_correlations_PFC = extract_trials(PFC, t_start, t_end, perm_n = False,  animal_perm = animal_perm)
-    correlation_m_PFC = np.corrcoef(matrix_for_correlations_PFC)
-    np.fill_diagonal(correlation_m_PFC,np.nan); correlation_m_PFC_f = correlation_m_PFC.flatten()
-    correlation_m_PFC_f = correlation_m_PFC_f[~np.isnan(correlation_m_PFC_f)]
-
-    X = _build_rdm_X(dlc)
-    cpd_HP = _cpd(X, correlation_m_f); cpd_PFC = _cpd(X, correlation_m_PFC_f)
-
-    pfc_perm = None; hp_perm = None
-    if perm_n: # if it's a permutation test
-        all_subjects_DM = np.concatenate((HP['DM'][0],PFC['DM'][0]),0);  all_subjects_fr = np.concatenate((HP['Data'][0],PFC['Data'][0]),0)
-        n_hp_sessions = len(HP['DM'][0])
-        pfc_perm = np.zeros((int(perm_n),X.shape[1])); hp_perm = np.zeros((int(perm_n),X.shape[1]))
-        if animal_perm == False:
-            results = [_one_perm_rsa(all_subjects_DM, all_subjects_fr, n_hp_sessions, X, t_start, t_end, perm_n, animal_perm)
-                       for _ in trange(int(perm_n), desc='RSA perms', leave=False)]
-            for i, (cpd_PFC_perm, cpd_HP_perm) in enumerate(results):
-                pfc_perm[i,:] = cpd_PFC_perm; hp_perm[i,:] = cpd_HP_perm
-        else:
-            animals_PFC = [0,1,2,3];  animals_HP = [4,5,6]
-            m, n = len(animals_PFC), len(animals_HP)
-            num_rounds = factorial(m + n) / (factorial(m)*factorial(n))
-            pfc_perm = np.zeros((int(num_rounds),X.shape[1])); hp_perm = np.zeros((int(num_rounds),X.shape[1])) # array to store permuted cpds
-            all_subjects_DM, all_subjects_fr  = animal_exp_permute(HP,PFC)
-            nn = 0
-            for indices_PFC in combinations(range(m + n), m):
-                indices_HP = [i for i in range(m + n) if i not in indices_PFC]
-                DM_PFC = np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_PFC)]
-                Data_PFC = np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_PFC)]; data_PFC = [DM_PFC,Data_PFC]
-
-                DM_HP = np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_HP)]
-                Data_HP = np.asarray(all_subjects_fr, dtype=object)[np.asarray(indices_HP)]
-                data_HP = [DM_HP,Data_HP]
-
-                matrix_for_correlations_perm_PFC = extract_trials(data_PFC, t_start, t_end, perm_n  = perm_n,  animal_perm = animal_perm)
-                matrix_for_correlations_perm_PFC = np.corrcoef(matrix_for_correlations_perm_PFC)
-                np.fill_diagonal(matrix_for_correlations_perm_PFC,np.nan)
-                matrix_for_correlations_perm_PFC= matrix_for_correlations_perm_PFC.flatten()
-                y_perm_PFC = matrix_for_correlations_perm_PFC[~np.isnan(matrix_for_correlations_perm_PFC)]
-                cpd_PFC_perm = _cpd(X,y_perm_PFC)
-
-                matrix_for_correlations_perm_HP = extract_trials(data_HP, t_start, t_end, perm_n  = perm_n,  animal_perm = animal_perm)
-                matrix_for_correlations_perm_HP  = np.corrcoef(matrix_for_correlations_perm_HP)
-                np.fill_diagonal(matrix_for_correlations_perm_HP,np.nan)
-                matrix_for_correlations_perm_HP= matrix_for_correlations_perm_HP.flatten()
-                y_perm_HP = matrix_for_correlations_perm_HP[~np.isnan(matrix_for_correlations_perm_HP)]
-                cpd_HP_perm = _cpd(X,y_perm_HP)
-                pfc_perm[nn,:] = cpd_PFC_perm;  hp_perm[nn,:]  = cpd_HP_perm
-                nn += 1
-
-    return cpd_PFC, cpd_HP, matrix_for_correlations_PFC, matrix_for_correlations_HP, pfc_perm, hp_perm
-
-
 def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
     if dlc == False:
         cue = np.arange(34,62);  reward = np.arange(35,63)
@@ -479,7 +375,7 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
 
         plt.yticks(range(15), ('A T1 R', 'A T1 NR','A T2 R', 'A T2 NR',\
                            'A T3 R','A T3 NR', ' I T1',\
-                           'I T3', ' T2', 'B T3 R',\
+                           'I T3', 'I T2', 'B T3 R',\
                            ' B T3 NR','B T2 R', 'B T2 NR', 'B T1 R', 'B T1 NR'))
 
         plt.title(title_str[i])

@@ -1,15 +1,15 @@
 """Neural correlates of behavioural policy (Figure 6).
 
-Analyses how neural firing rate patterns relate to the animal's behavioural
-policy (choice history weights from logistic regression). Computes correlations
-between policy coefficients and neural CPDs across time, with session-shuffle
-and animal-shuffle permutation tests.
+Analyses how neural firing rates relate to the animal's behavioural policy
+(estimated from a logistic regression on the history of choices and outcomes).
+Correlates the policy weights of neurons across problems at each pair of time
+points, with session-shuffle and animal-shuffle permutation tests.
 
 Key functions:
 - plot_policy_during_recordings: logistic regression of choice history (Fig 6A)
 - plot_policy_simple_GLM: GLM of policy vs neural activity (Fig 6B)
-- plot_correlations_slice: policy-neural correlations at a time slice (Fig 6C)
-- plot_diagonal_sums: diagonal sum analysis (Fig 6D)
+- plot_correlations_slice: slices through the cross-problem correlation matrices (Fig 6E)
+- plot_diagonal_sums: correlation matrices and their diagonal sums (Fig 6C-D)
 """
 
 import scipy
@@ -58,7 +58,7 @@ def _policy_design(choices, reward, n):
 
 def plot_policy_during_recordings(PFC, HP, n = 12): 
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions, Figure 5A.'''
+    outcomes (not shown) and choice-outcome interactions, Figure 6A.'''
     
     # Split sessions by animal using shared constants
     all_subjects_DM, _ = animal_exp_permute(HP, PFC)
@@ -145,7 +145,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
 
 
 def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False): 
-    ''' Plotting CPDs and significance levels, Figure 5B)''' 
+    ''' Plotting CPDs and significance levels (Figure 6B)''' 
     cpd_HP, cpd_perm_HP =  GLM_policy_roll_tome(HP, perm = n_perm, n = n)
     cpd_PFC, cpd_perm_PFC =  GLM_policy_roll_tome(PFC, perm =  n_perm, n = n)
     cpd_HP_m = np.nanmean(cpd_HP,0); cpd_PFC_m = np.nanmean(cpd_PFC,0)
@@ -159,12 +159,12 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     # plot cpds and significance levels
     for c,cpd in enumerate(cpds): 
         # Max-statistic correction: max over time per permutation, then percentile
-        perm_means = np.mean(cpds_perms[c], 1)  # average across sessions: (perm, n_timepoints, n_predictors)
+        perm_means = np.mean(cpds_perms[c], 1)  # average across neurons: (perm, n_timepoints, n_predictors)
         max_over_time = np.max(perm_means, axis=1)  # max over time: (perm, n_predictors)
         values_95 = np.percentile(max_over_time, 95, axis=0)  # (n_predictors,)
         values_99 = np.percentile(max_over_time, 99, axis=0)
         cpd_max = np.max(cpd); plt.subplot(1,2,c+1); plt.title(titles[c])
-        array_pvals = np.ones((cpd.shape[0], cpd.shape[1])) # store where significant at .05 or .001
+        array_pvals = np.ones((cpd.shape[0], cpd.shape[1])) # store where significant at .05 or .01
         for pred in range(cpd.shape[1]):  # loop through pred
             array_pvals[(np.where(cpd[:,pred] > values_95[pred])[0]),pred] = 0.05
             array_pvals[(np.where(cpd[:,pred] > values_99[pred])[0]),pred] = 0.01
@@ -183,7 +183,7 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
 
 def policy_for_GLM(data, n, perm = False):
     '''Coefficients from a logistic regression predicting current choices using the history of previous choices (I),
-    outcomes (not shown) and choice-outcome interactions to use for policy calculations for PFC and CA1 animals in GLM on Figure 5A.'''
+    outcomes (not shown) and choice-outcome interactions to use for policy calculations for PFC and CA1 animals in the GLM of Figure 6B.'''
     if perm:
         dm = data[0]
     else:
@@ -306,7 +306,7 @@ def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_H
                                np.mean(coefs_tasks[6:9], 0), np.mean(coefs_tasks[9:12], 0),
                                np.mean(coefs_tasks[12:15], 0), np.mean(coefs_tasks[15:18], 0)])
 
-    b_a = np.asarray(task_mean_A_B[1]) - np.asarray(task_mean_A_B[0]) # B - A (index 0 is A, 1 is B)
+    b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # A - B (index 0 is A, 1 is B)
     diff = np.asarray(b_a[3:]) - np.asarray(b_a[:3])
     pfc_hp = np.asarray(task_mean_A_B)[:,3:] - np.asarray(task_mean_A_B)[:,:3]
     return diff, pfc_hp
@@ -430,8 +430,8 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
     diff_PFC_HP_perm, PFC_HP_perm = permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
     diff_PFC_HP_perm = np.asarray(diff_PFC_HP_perm);  PFC_HP_perm  = np.asarray(PFC_HP_perm); task_mean_A_B = np.asarray(task_mean_A_B)
 
-    b_a = np.asarray(task_mean_A_B[1]) - np.asarray(task_mean_A_B[0]) # real B - A choice policy difference (index 0 is A, 1 is B)
-    diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # difference in B - A PFC - CA1
+    b_a = np.asarray(task_mean_A_B[0])- np.asarray(task_mean_A_B[1]) # real A - B choice policy difference (index 0 is A, 1 is B)
+    diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # (A - B) PFC - (A - B) CA1 = (B - A) CA1 - (B - A) PFC: positive where CA1 has the larger B - A difference
 
     # Max-statistic correction for B-A difference: max across anchors and time per permutation, then percentile
     n_p = len(diff_PFC_HP_perm)
@@ -441,8 +441,9 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
         _thr = exact_perm_threshold
     else:
         _thr = lambda null, alpha: np.percentile(null, 100*(1 - alpha))
-    _95th_ba = _thr(max_ba_per_perm, 0.05)
-    indx_b_a_diff = np.where(diff_PFC_HP > _95th_ba)
+    _95th_ba = _thr(max_ba_per_perm, 0.05); _99th_ba = _thr(max_ba_per_perm, 0.01)
+    indx_b_a_diff_05 = np.where(diff_PFC_HP > _95th_ba)
+    indx_b_a_diff_01 = np.where(diff_PFC_HP > _99th_ba)
 
     # Max-statistic correction for A and B separately
     # PFC_HP_perm shape: (perm_n, 2, 3, n_timepoints) — 2=A/B, 3=init/ch/rew
@@ -480,9 +481,11 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
                     p_b_01 = significant_diff_b_01[1][np.where(significant_diff_b_01[0] == per)[0]]
                     axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink', label = 'B PFC vs CA1 < .05' if animal_perm else None)
                     axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = None if animal_perm else 'B PFC vs CA1 < .01')
-                    # B-A difference
-                    p_a_b = indx_b_a_diff[1][np.where(indx_b_a_diff[0] == per)[0]]
-                    axs[per].plot(p_a_b, np.ones(p_a_b.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey',label = 'B - A PFC vs CA1')
+                    # B - A difference: P < .05 (small dots) and P < .01 (large dots)
+                    p_ba_05 = indx_b_a_diff_05[1][np.where(indx_b_a_diff_05[0] == per)[0]]
+                    p_ba_01 = indx_b_a_diff_01[1][np.where(indx_b_a_diff_01[0] == per)[0]]
+                    axs[per].plot(p_ba_05, np.ones(p_ba_05.shape)*ymax + 0.08, '.', markersize = 2, color = 'grey', label = 'B - A PFC vs CA1 < .05' if animal_perm else None)
+                    axs[per].plot(p_ba_01, np.ones(p_ba_01.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey', label = None if animal_perm else 'B - A PFC vs CA1 < .01')
                     axs[per].set_xticks(_xticks)
                     axs[per].set_ylim(-0.15, ymax+0.1)
                     axs[per].set_xticklabels(XTICK_LABELS)

@@ -299,7 +299,7 @@ def plot_simple_GLM(HP,PFC, n_perm = 1000, animal_perm = False, dlc = False):
         cpd = cpds[region][:,:-1] # select all cpds except constant
         cpd_perm = cpds_perms[region][:,:,:,:-1]
         # Max-statistic correction: max over time per permutation, then percentile
-        perm_means = np.mean(cpd_perm, 1)  # average across sessions: (perm, n_timepoints, n_predictors)
+        perm_means = np.mean(cpd_perm, 1)  # average across neurons: (perm, n_timepoints, n_predictors)
         max_over_time = np.max(perm_means, axis=1)  # max over time: (perm, n_predictors)
         values_95 = np.percentile(max_over_time, 95, axis=0)  # (n_predictors,)
         values_99 = np.percentile(max_over_time, 99, axis=0)
