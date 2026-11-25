@@ -2,8 +2,7 @@
 
 The code in this repository differs from the version used for the published paper
 (Samborska et al., Nat Neurosci 25, 1314-1326, 2022). The bugs below were found and fixed
-in November 2026. Every fix has a test in `tests/`, and all figures in `figures/` were
-regenerated on the full data set (5,000 session permutations, random seed 0; all 35 animal splits).
+in November 2026. Every fix has a test in `tests/`.
 
 | # | Bug | Panels affected |
 |---|---|---|
@@ -27,7 +26,7 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
 | 18 | The same error bar was drawn on every problem | Fig 1g |
 | 19 | The Port bar averaged the confusion-matrix cells that compare different physical ports | Fig 4g |
 | 20 | The reversal window started one trial early; sessions with a single reversal were left out | Fig 1f (final: t(8) = -8.61, p < .001) |
-| 21 | Trials to threshold were carried over incorrectly across sessions; now every trial since the last reversal is counted | Fig 1e; Ext 1a |
+| 21 | Trials to threshold were carried over incorrectly across sessions (stale index, forced trials subtracted twice, counts overwritten, trials after a session's last reversal dropped) | Fig 1e; Ext 1a |
 | 22 | Out-of-sequence poke counts were stored one trial late and blocks started on the last trial of the old block | Fig 1g, h; Ext 1b; Ext 2d-h |
 | 23 | The first block of each recording session was counted one trial short | Ext 2a-c |
 | 24 | The rewarded-streak counter selecting forced trials lagged by a trial and did not reset at an error | Ext 2i, j |
@@ -50,11 +49,13 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
   bins remain.
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
-  choice (5b), policy on A (5c, P = 2/35) and A (5d) do not reach P < 0.05.
+  choice (5b), policy on A (5c, P = 2/35), and A and A versus B (5d) do not reach P < 0.05.
 - Extended Data Fig 7f: policy on A choices now generalizes more strongly in PFC than CA1 (P < 0.05); the caption says it does not.
 - Extended Data Fig 9d, all time points, cellular and temporal vectors (animals as the unit): P = 2/35 = 0.057; printed above the threshold.
 - Large significance markers are P < 0.01, not P < 0.001.
 - Fig 1k, history of choices: F(9,72) = 2.71, P = 0.009 (printed as P = 0.773).
+- Extended Data Fig 2h (A/B pokes only): the first reversal block differs significantly only from the third
+  (P = 0.088, 0.039, 0.123); the caption's statement holds for all pokes (2g: P = 0.023, 0.012, 0.012).
 
 All other conclusions are unchanged; several statistics change in value.
 

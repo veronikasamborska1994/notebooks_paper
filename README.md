@@ -75,7 +75,7 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_port.py             # Port versus role decoding (synthetic sessions)
 │   ├── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
 │   └── test_fixes.py            # One test per remaining fix in CORRECTIONS.md
-├── figures/                     # Output of run_all_analyses.py (PNG; 5,000 permutations, seed 0)
+├── figures/                     # Output of run_all_analyses.py (PNG)
 └── requirements.txt
 ```
 
