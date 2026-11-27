@@ -71,55 +71,39 @@ def extract_data(data, perm = False, inds =  np.arange(13,51)):
 
     return (result[0][0], result[0][1], result[1][0], result[1][1], result[2][0], result[2][1])
        
+def _cumulative_weights(data, modes_from, diagonal, axis):
+    '''Cumulative weights of `data` projected onto the singular modes of `modes_from`.
+    diagonal = True: squared projections summed over `axis` (variance captured by each temporal (axis 0) or cellular
+    (axis 1) mode, independent of how the modes of the two matrices pair up).
+    diagonal = False: absolute value of the diagonal u_i^T X v_i (the paired cellular-temporal weights).
+    Normalised by the number of neurons.'''
+    u, _, vh = np.linalg.svd(modes_from, full_matrices = False)
+    projected = np.linalg.multi_dot([u.T, data, vh.T])
+    if diagonal:
+        weights = np.sum(projected**2, axis = axis)
+    else:
+        weights = np.abs(projected.diagonal())
+    return np.cumsum(weights)/data.shape[0]
+
+
 def svd(flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
     flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
     flattened_all_clusters_task_3_first_half,flattened_all_clusters_task_3_second_half, diagonal = False, axis = 0):
+    '''Cross-validated generalisation of singular modes. The session is ordered 1a, 1b, 2a, 2b, 3a, 3b (problem, half) and
+    every pair of data and modes is one half-step apart:
+    within problems: 1a with 1b, 2a with 2b, 3a with 3b
+    between problems: 1b with 2a, 2b with 3a.
+    Each pair is used in both directions (modes from the earlier half and data from the later one, and the reverse) and the
+    two cumulative curves are averaged, so within and between pairs treat time in the same way.'''
+    firsts = [flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_3_first_half]
+    seconds = [flattened_all_clusters_task_1_second_half, flattened_all_clusters_task_2_second_half, flattened_all_clusters_task_3_second_half]
 
-    # Get Us and Vs for Task 1 Second Half
-    u_t1_2, s_t1_2, vh_t1_2 = np.linalg.svd(flattened_all_clusters_task_1_second_half, full_matrices = False)   
-    # Get Us and Vs for Task 2 Second Half
-    u_t2_2, s_t2_2, vh_t2_2 = np.linalg.svd(flattened_all_clusters_task_2_second_half, full_matrices = False)    
-    
-    t_u_t_1_2 = np.transpose(u_t1_2); t_v_t_1_2 = np.transpose(vh_t1_2) 
-    t_u_t_2_2 = np.transpose(u_t2_2); t_v_t_2_2 = np.transpose(vh_t2_2)  
-    n_neurons = flattened_all_clusters_task_1_first_half.shape[0]
-    
-    # Project task 1 first half onto modes from task 1 second half
-    s_task_1_2 = np.linalg.multi_dot([t_u_t_1_2, flattened_all_clusters_task_1_first_half, t_v_t_1_2])
-    
-    if diagonal == False:
-        s_1_2 = s_task_1_2.diagonal() # for both cellular and temporal modes look at the diagonal 
-    else:
-        s_1_2 = np.sum(s_task_1_2**2, axis = axis) # for either cellular and temporal modes look at either 0 or 1 axis
-    sum_c_task_1_2 = np.cumsum(abs(s_1_2))/n_neurons #normalise by number of neurons
-    
-    # Project task 2 first half onto modes from task 1 second half (otherwise same logic)
-    s_task_2_1_from_t_1_2 = np.linalg.multi_dot([t_u_t_1_2, flattened_all_clusters_task_2_first_half, t_v_t_1_2])
-    if diagonal == False:
-        s_2_1_from_t_1_2 = s_task_2_1_from_t_1_2.diagonal()
-    else:
-        s_2_1_from_t_1_2 = np.sum(s_task_2_1_from_t_1_2**2, axis = axis)
-    sum_c_task_2_1_from_t_1_2 = np.cumsum(abs(s_2_1_from_t_1_2))/n_neurons
-   
-    # Project task 2 first half onto modes from task 2 second half (otherwise same logic)
-    s_task_2_1_from_t_2_2 = np.linalg.multi_dot([t_u_t_2_2, flattened_all_clusters_task_2_first_half, t_v_t_2_2])    
-    if diagonal == False:
-        s_2_1_from_t_2_2 = s_task_2_1_from_t_2_2.diagonal()
-    else:
-        s_2_1_from_t_2_2 = np.sum(s_task_2_1_from_t_2_2**2, axis = axis)
-    sum_c_task_2_1_from_t_2_2 = np.cumsum(abs(s_2_1_from_t_2_2))/n_neurons
-    
-    #Compare task 3 First Half from Task 1 Last Half 
-    s_task_3_1_from_t_1_2 = np.linalg.multi_dot([t_u_t_1_2, flattened_all_clusters_task_3_first_half, t_v_t_1_2])
-    if diagonal == False:
-        s_3_1_from_t_1_2 = s_task_3_1_from_t_1_2.diagonal()
-    else:
-        s_3_1_from_t_1_2 = np.sum(s_task_3_1_from_t_1_2**2, axis = axis)
-    sum_c_task_3_1_from_t_1_2 = np.cumsum(abs(s_3_1_from_t_1_2))/n_neurons
-
-
-    average_within_all = np.mean([sum_c_task_1_2, sum_c_task_2_1_from_t_2_2], axis = 0) # average within task projections
-    average_between_all = np.mean([sum_c_task_2_1_from_t_1_2, sum_c_task_3_1_from_t_1_2], axis = 0)# average between task projections
+    def pair(earlier, later): # both directions of one pair of halves, averaged
+        return (_cumulative_weights(earlier, later, diagonal, axis) + _cumulative_weights(later, earlier, diagonal, axis))/2
+    within = [pair(firsts[i], seconds[i]) for i in range(3)]
+    between = [pair(seconds[i], firsts[i + 1]) for i in range(2)]
+    average_within_all = np.mean(within, axis = 0) # average within task projections
+    average_between_all = np.mean(between, axis = 0) # average between task projections
 
     if diagonal == True:
         average_within = average_within_all/average_within_all[-1] # get within task variance explained for cellular OR temporal modes 
@@ -195,101 +179,33 @@ def cell_time_shuffle_vs_real(data, d = True,  axis = 0, shuffle_cells = True, H
     sns.despine()
     plt.legend()
 
+def _temporal_weights(data, modes_from):
+    '''Cumulative variance of `data` along the temporal modes (right singular vectors) of `modes_from`.'''
+    _, _, vh = np.linalg.svd(modes_from, full_matrices = False)
+    return np.cumsum(np.sum(np.linalg.multi_dot([data, vh.T])**2, axis = 0))/data.shape[0]
+
+
+def _pairs(data_firsts, data_seconds, modes_firsts, modes_seconds):
+    '''Within (1a/1b, 2a/2b, 3a/3b) and between (1b/2a, 2b/3a) temporal weights, normalised, of one region's data on the
+    temporal modes of the same or the other region, each pair in both directions with the two curves averaged.
+    Returns the average of the within and between curves.'''
+    both = lambda data_a, modes_a, data_b, modes_b: (_temporal_weights(data_a, modes_a) + _temporal_weights(data_b, modes_b))/2
+    within = np.mean([both(data_firsts[i], modes_seconds[i], data_seconds[i], modes_firsts[i]) for i in range(3)], axis = 0)
+    between = np.mean([both(data_firsts[i + 1], modes_seconds[i], data_seconds[i], modes_firsts[i + 1]) for i in range(2)], axis = 0)
+    return np.mean([between/between[-1], within/within[-1]], 0)
+
+
 def svd_between_brains(HP,PFC, inds = np.arange(13,51)):
-    axis = 0
-    # HP 
-    flattened_all_clusters_task_1_first_half_HP, flattened_all_clusters_task_1_second_half_HP,\
-    flattened_all_clusters_task_2_first_half_HP, flattened_all_clusters_task_2_second_half_HP,\
-    flattened_all_clusters_task_3_first_half_HP,flattened_all_clusters_task_3_second_half_HP = extract_data(HP, perm = False, inds = inds)
-    n_neurons_HP = flattened_all_clusters_task_1_first_half_HP.shape[0]
-       
-    trp_HP, average_between_all_HP, average_within_all_HP = svd(flattened_all_clusters_task_1_first_half_HP, flattened_all_clusters_task_1_second_half_HP,\
-    flattened_all_clusters_task_2_first_half_HP, flattened_all_clusters_task_2_second_half_HP,\
-    flattened_all_clusters_task_3_first_half_HP, flattened_all_clusters_task_3_second_half_HP, diagonal = True, axis = axis)
-    # Get Us and Vs for Task 1 Second Half HP
-    u_t1_2_HP, s_t1_2_HP, vh_t1_2_HP = np.linalg.svd(flattened_all_clusters_task_1_second_half_HP, full_matrices = False)   
-    # Get Us and Vs for Task 2 Second Half HP
-    u_t2_2_HP, s_t2_2_HP, vh_t2_2_HP = np.linalg.svd(flattened_all_clusters_task_2_second_half_HP, full_matrices = False)    
-    t_u_t_1_2_HP = np.transpose(u_t1_2_HP); t_v_t_1_2_HP = np.transpose(vh_t1_2_HP) 
-    t_u_t_2_2_HP = np.transpose(u_t2_2_HP); t_v_t_2_2_HP = np.transpose(vh_t2_2_HP)  
-    
-    # PFC
-    flattened_all_clusters_task_1_first_half_PFC, flattened_all_clusters_task_1_second_half_PFC,\
-    flattened_all_clusters_task_2_first_half_PFC, flattened_all_clusters_task_2_second_half_PFC,\
-    flattened_all_clusters_task_3_first_half_PFC,flattened_all_clusters_task_3_second_half_PFC = extract_data(PFC, perm = False, inds = inds)
-    n_neurons_PFC = flattened_all_clusters_task_1_first_half_PFC.shape[0]
+    '''Temporal modes of one region applied to the other (Fig 5E), with the same pairs as svd().'''
+    HP_data = extract_data(HP, perm = False, inds = inds)
+    PFC_data = extract_data(PFC, perm = False, inds = inds)
+    split = lambda d: (d[0::2], d[1::2]) # first halves, second halves of problems 1 to 3
 
-    # Get Us and Vs for Task 1 Second Half PFC
-    u_t1_2_PFC, s_t1_2_PFC, vh_t1_2_PFC = np.linalg.svd(flattened_all_clusters_task_1_second_half_PFC, full_matrices = False)   
-    # Get Us and Vs for Task 2 Second Half PFC
-    u_t2_2_PFC, s_t2_2_PFC, vh_t2_2_PFC = np.linalg.svd(flattened_all_clusters_task_2_second_half_PFC, full_matrices = False)    
-    
-    t_u_t_1_2_PFC = np.transpose(u_t1_2_PFC); t_v_t_1_2_PFC = np.transpose(vh_t1_2_PFC) 
-    t_u_t_2_2_PFC = np.transpose(u_t2_2_PFC); t_v_t_2_2_PFC = np.transpose(vh_t2_2_PFC)  
-   
-    trp_PFC, average_between_all_PFC, average_within_all_PFC = svd(flattened_all_clusters_task_1_first_half_PFC, flattened_all_clusters_task_1_second_half_PFC,\
-    flattened_all_clusters_task_2_first_half_PFC, flattened_all_clusters_task_2_second_half_PFC,\
-    flattened_all_clusters_task_3_first_half_PFC, flattened_all_clusters_task_3_second_half_PFC, diagonal = True, axis = axis)
-
-    # Projections for HP from PFC between task
-    # Project task 2 first half onto modes from task 1 second half (otherwise same logic) using PFC vectors
-    s_task_2_1_from_t_1_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_HP, t_v_t_1_2_PFC])
-    s_2_1_from_t_1_2_HP = np.sum(s_task_2_1_from_t_1_2_HP**2, axis = axis)
-    sum_c_task_2_1_from_t_1_2_HP = np.cumsum(abs(s_2_1_from_t_1_2_HP))/n_neurons_HP
-    
-    # Compare task 3 First Half from Task 1 Last Half using PFC vectors
-    s_task_3_1_from_t_1_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_3_first_half_HP, t_v_t_1_2_PFC])
-    s_3_1_from_t_1_2_HP = np.sum(s_task_3_1_from_t_1_2_HP**2, axis = axis)
-    sum_c_task_3_1_from_t_1_2_HP = np.cumsum(abs(s_3_1_from_t_1_2_HP))/n_neurons_HP
-
-    # Projections for HP from PFC within task
-    # Project task 1 first half onto modes from task 1 second half  using PFC vectors
-    s_task_1_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_1_first_half_HP, t_v_t_1_2_PFC])
-    s_1_2_HP = np.sum(s_task_1_2_HP**2, axis = axis) # for either cellular and temporal modes look at either 0 or 1 axis
-    sum_c_task_1_2_HP = np.cumsum(abs(s_1_2_HP))/n_neurons_HP #normalise by number of neurons
-    
-    # Project task 2 first half onto modes from task 2 second half (otherwise same logic)  using PFC vectors
-    s_task_2_1_from_t_2_2_HP = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_HP, t_v_t_2_2_PFC])
-    s_2_1_from_t_2_2_HP = np.sum(s_task_2_1_from_t_2_2_HP**2, axis = axis)
-    sum_c_task_2_1_from_t_2_2_HP = np.cumsum(abs(s_2_1_from_t_2_2_HP))/n_neurons_HP
-    
-    average_within_all_HP_from_PFC = np.mean([sum_c_task_1_2_HP, sum_c_task_2_1_from_t_2_2_HP], axis = 0)# average between task projections
-    average_within_all_HP_from_PFC = average_within_all_HP_from_PFC/average_within_all_HP_from_PFC[-1] # get between task variance explained for cellular OR temporal modes 
-
-    average_between_all_HP_from_PFC = np.mean([sum_c_task_2_1_from_t_1_2_HP, sum_c_task_3_1_from_t_1_2_HP], axis = 0)# average between task projections
-    average_between_all_HP_from_PFC = average_between_all_HP_from_PFC/average_between_all_HP_from_PFC[-1] # get between task variance explained for cellular OR temporal modes 
-
-    # Projections for PFC from HP between task
-    # Project task 2 first half onto modes from task 1 second half (otherwise same logic) using HP vectors
-    s_task_2_1_from_t_1_2_PFC= np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_PFC, t_v_t_1_2_HP])
-    s_2_1_from_t_1_2_PFC = np.sum(s_task_2_1_from_t_1_2_PFC**2, axis = axis)
-    sum_c_task_2_1_from_t_1_2_PFC = np.cumsum(abs(s_2_1_from_t_1_2_PFC))/n_neurons_PFC
-   
-    #Compare task 3 First Half from Task 1 Last Half using HP vectors
-    s_task_3_1_from_t_1_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_3_first_half_PFC, t_v_t_1_2_HP])
-    s_3_1_from_t_1_2_PFC = np.sum(s_task_3_1_from_t_1_2_PFC**2, axis = axis)
-    sum_c_task_3_1_from_t_1_2_PFC = np.cumsum(abs(s_3_1_from_t_1_2_PFC))/n_neurons_PFC
-      
-    # Projections for PFC from HP within task
-    # Project task 1 first half onto modes from task 1 second half using HP vectors
-    s_task_1_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_1_first_half_PFC, t_v_t_1_2_HP])
-    s_1_2_PFC = np.sum(s_task_1_2_PFC**2, axis = axis) # for either cellular and temporal modes look at either 0 or 1 axis
-    sum_c_task_1_2_PFC = np.cumsum(abs(s_1_2_PFC))/n_neurons_PFC #normalise by number of neurons
-    
-    # Project task 2 first half onto modes from task 2 second half (otherwise same logic)  using HP vectors
-    s_task_2_1_from_t_2_2_PFC = np.linalg.multi_dot([flattened_all_clusters_task_2_first_half_PFC, t_v_t_2_2_HP])
-    s_2_1_from_t_2_2_PFC = np.sum(s_task_2_1_from_t_2_2_PFC**2, axis = axis)
-    sum_c_task_2_1_from_t_2_2_PFC = np.cumsum(abs(s_2_1_from_t_2_2_PFC))/n_neurons_PFC
-    
-    average_within_all_PFC_from_HP = np.mean([sum_c_task_1_2_PFC, sum_c_task_2_1_from_t_2_2_PFC], axis = 0)# average between task projections
-    average_within_all_PFC_from_HP = average_within_all_PFC_from_HP/average_within_all_PFC_from_HP[-1] # get between task variance explained for cellular OR temporal modes 
-    average_between_all_PFC_from_HP = np.mean([sum_c_task_2_1_from_t_1_2_PFC, sum_c_task_3_1_from_t_1_2_PFC], axis = 0)# average between task projections
-    average_between_all_PFC_from_HP = average_between_all_PFC_from_HP/average_between_all_PFC_from_HP[-1] # get between task variance explained for cellular OR temporal modes 
-    
-    HP_from_PFC = np.mean([average_between_all_HP_from_PFC, average_within_all_HP_from_PFC], 0)
-    PFC_from_HP = np.mean([average_between_all_PFC_from_HP, average_within_all_PFC_from_HP], 0)
-    HP_ = np.mean([average_between_all_HP,average_within_all_HP],0)
-    PFC_ = np.mean([average_between_all_PFC,average_within_all_PFC],0)
+    _, between_HP, within_HP = svd(*HP_data, diagonal = True, axis = 0)
+    _, between_PFC, within_PFC = svd(*PFC_data, diagonal = True, axis = 0)
+    HP_ = np.mean([between_HP, within_HP], 0); PFC_ = np.mean([between_PFC, within_PFC], 0)
+    HP_from_PFC = _pairs(*split(HP_data), *split(PFC_data))
+    PFC_from_HP = _pairs(*split(PFC_data), *split(HP_data))
     
     plt.figure(figsize = (6,5))
     plt.plot(HP_*100, color = 'pink', label = 'CA1 from CA1')
@@ -301,6 +217,7 @@ def svd_between_brains(HP,PFC, inds = np.arange(13,51)):
     plt.ylabel('Variance Explained')
     plt.title('Temporal Modes')
   
+
 def plot_example_patterns(data):    
     flattened_all_clusters_task_1_first_half, flattened_all_clusters_task_1_second_half,\
     flattened_all_clusters_task_2_first_half, flattened_all_clusters_task_2_second_half,\
@@ -377,11 +294,14 @@ def permute(PFC, HP, diagonal = False, perm = 2, axis = 0, inds = np.arange(13,5
 
     return u_v_area_shuffle
 
-def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm = False, inds = np.arange(13,51)):
+def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm = False, inds = np.arange(13,51), seed = 0):
     '''Examine generalisation of singular vectors better between problems in PFC than CA1 by
     calculating the area between the dash and solid lines in earlier plots for CA1 and for PFC separately.
-    ution).  Temporal singular vectors generalised equally well between problems in the two regions.'''
-    
+    ution).  Temporal singular vectors generalised equally well between problems in the two regions.
+    The random generator is reset to `seed` before the session permutations, so each panel can be reproduced on its own
+    and the P value printed here is the one behind the histogram.'''
+    if seed is not None:
+        np.random.seed(seed)
     u_v_area_shuffle = permute(PFC, HP, diagonal = d, perm = p, axis = axis, inds = inds, animal_perm = animal_perm) # permuted differences
     
     # real differences
@@ -398,6 +318,10 @@ def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm
         uv_95 = np.percentile(diff_uv,95)*100
     real_uv = trp_hp*100 - trp_pfc*100
     diff_uv = np.asarray(diff_uv)*100
+    k = int(np.sum(diff_uv >= real_uv)) # permutations at least as large as the difference in the data
+    P = k/len(diff_uv) if animal_perm else (1 + k)/(len(diff_uv) + 1)
+    print('SVD CA1 vs PFC (%s): difference %.4g, 95th percentile %.4g, P = %.4g (%d of %d)' % (
+        'cellular and temporal' if d == False else ('cellular' if axis == 1 else 'temporal'), real_uv, uv_95, P, k, len(diff_uv)))
     
     plt.hist(diff_uv, color = 'grey', alpha = 0.5)
     plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Difference in the data')
