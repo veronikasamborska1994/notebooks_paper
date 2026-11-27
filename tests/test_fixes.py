@@ -16,6 +16,12 @@ from test_behaviour import Session, Ev, rec_pokes
 N_PERM = 5
 
 
+@pytest.fixture(autouse=True)
+def no_minimum_reversals(monkeypatch):
+    # short synthetic problems; the rule that drops interrupted problems has its own test
+    monkeypatch.setattr(fb, 'MIN_REVERSALS_PER_PROBLEM', 0)
+
+
 @pytest.fixture(scope='module')
 def permutation_figures():
     """Run the time-resolved permutation tests once; return the shapes of the nulls handed to np.percentile
@@ -76,7 +82,8 @@ def test_6_cross_region_projection_uses_the_modes_of_the_same_problem():
 def training_session(seed, config, n=80):
     rng = np.random.default_rng(seed)
     return Session(choices=rng.integers(0, 2, n).astype(float), outcomes=rng.integers(0, 2, n).astype(float),
-                   configuration_i=np.full(n, config))
+                   configuration_i=np.full(n, config), poke_A=np.full(n, 10 + config), poke_B=np.full(n, 20 + config),
+                   block=np.arange(n) // 8, forced_trial=np.zeros(n, int))
 
 
 class Subjects:
@@ -299,3 +306,54 @@ def test_fig4g_has_one_legend_naming_the_regions_pfc_and_ca1():
     names = [t.get_text() for t in plt.gca().get_legend().get_texts()]
     plt.close('all')
     assert names == ['PFC', 'CA1']
+
+
+def test_30_time_control_keeps_adjacent_layouts_in_either_order_and_compares_earlier_with_later(monkeypatch):
+    def session(order):                                       # layouts run in this order, 30 trials each
+        task = np.repeat(order, 30).astype(float)
+        DM = np.zeros((len(task), 8)); DM[:, 5] = task
+        return DM, np.zeros((len(task), 2, 5))
+    sessions = [session([2, 1, 3]), session([1, 2, 3]), session([1, 3, 2]), session([3, 1, 2])]
+    d = {'DM': [np.array([s[0] for s in sessions] + [None], object)[:-1]],
+         'Data': [np.array([s[1] for s in sessions] + [None], object)[:-1]]}
+    monkeypatch.setattr(ext, 'task_ind', lambda task, a, b: task)
+    _, _, order = ext.control_for_time(d, compare_tasks=1)          # T1-T2: adjacent in sessions 0, 1 and 3
+    assert order == [(2, 1), (1, 2), (1, 2)]
+    _, _, order = ext.control_for_time(d, compare_tasks=3)          # T1-T3: adjacent in sessions 0, 2 and 3
+    assert order == [(1, 3), (1, 3), (3, 1)]
+
+
+def test_ext2dh_last_free_trial_of_a_layout_is_scored_with_its_own_ports():
+    # trial 19 is the last trial of layout 1 (reversal block 4); A then B is an out-of-sequence poke in layout 1
+    assert np.allclose(rec_pokes(19), [0, 0, 0, 0.2])
+    assert np.allclose(rec_pokes(19, ('A', 'other'), only_A_B=False), [0, 0, 0, 0.2])
+
+
+def _layout_session(seed, i, a, b, n=80, block_len=8):
+    rng = np.random.default_rng(seed)
+    return Session(choices=rng.integers(0, 2, n).astype(float), outcomes=rng.integers(0, 2, n).astype(float),
+                   configuration_i=np.full(n, i), poke_A=np.full(n, a), poke_B=np.full(n, b),
+                   block=np.arange(n) // block_len, forced_trial=np.zeros(n, int))
+
+
+LAYOUTS = [(6, 1, 5), (6, 5, 3), (3, 1, 6), (1, 3, 6), (2, 6, 4), (4, 2, 6), (5, 1, 2), (1, 2, 5), (2, 3, 1), (3, 4, 5)]
+
+
+def test_c3_problems_are_told_apart_by_the_whole_port_layout():
+    # the first two layouts share the initiation port (6) but not A and B: they are two problems, ten in all
+    sessions = [_layout_session(k, *lay) for k, lay in enumerate(LAYOUTS)]
+    coefs = fb.policy_training(Subjects([sessions]))[0]
+    plt.close('all')
+    assert len(coefs) == 10
+
+
+def test_c3_an_interrupted_problem_is_left_out(monkeypatch):
+    monkeypatch.setattr(fb, 'MIN_REVERSALS_PER_PROBLEM', 5)
+    full = [_layout_session(k, *lay) for k, lay in enumerate(LAYOUTS)]                # 9 reversals each
+    interrupted = _layout_session(99, 6, 2, 3, block_len=30)                          # 2 reversals, same initiation port
+    sessions = full[:9] + [interrupted] + full[9:]
+    assert fb.interrupted_problem_sessions(sessions) == {9}
+    with_it = fb.policy_training(Subjects([sessions]))[0]
+    without = fb.policy_training(Subjects([full]))[0]
+    plt.close('all')
+    assert len(with_it) == 10 and np.allclose(with_it, without)

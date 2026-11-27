@@ -122,7 +122,7 @@ def plot_Init_B_remapping(PFC, HP):
 
 
 def trials_surprise(data, compare_tasks = 1):    
-    x,y = control_for_time(data, compare_tasks = compare_tasks) # only look at tasks that actually follow each other in time
+    x,y,order = control_for_time(data, compare_tasks = compare_tasks) # only tasks that follow each other in time
     surprise_list_neurons_a_a = [];  surprise_list_neurons_b_b = []
     ind_pre_post = 20; ind_base = 10
     for  s, sess in enumerate(x):
@@ -130,13 +130,8 @@ def trials_surprise(data, compare_tasks = 1):
         firing_rates_mean_time = x[s]; n_trials, n_neurons, n_time = firing_rates_mean_time.shape
         taskid = task_ind(task,a_pokes,b_pokes)
 
-        if compare_tasks == 1:
-            taskid_1 = 1; taskid_2 = 2
-        elif compare_tasks == 2:
-            taskid_1 = 2; taskid_2 = 3
-        else:
-            taskid_1 = 1; taskid_2 = 3
-            
+        taskid_1, taskid_2 = order[s] # taskid_1 is the layout that comes first in time, taskid_2 the one right after it
+
         task_1_a = np.where((taskid == taskid_1) & (choices == 1))[0] # Find indicies for task 1 A
         task_1_b = np.where((taskid == taskid_1) & (choices == 0))[0] # Find indicies for task 1 B
         task_2_a = np.where((taskid == taskid_2) & (choices == 1))[0] # Find indicies for task 2 A
@@ -206,30 +201,26 @@ def control_for_time(data, compare_tasks=1):
         Firing rate arrays for qualifying sessions.
     task_time_confound_dm : list
         Design matrices for qualifying sessions.
+    task_order : list of (first, second)
+        The two layouts of each session in the order they were run.
     """
     y = data['DM'][0]; x = data['Data'][0]
-    task_time_confound_data = []; task_time_confound_dm = []
-    
+    task_time_confound_data = []; task_time_confound_dm = []; task_order = []
+    pair = {1: (1, 2), 2: (2, 3), 3: (1, 3)}[compare_tasks if compare_tasks in (1, 2) else 3]
     for  s, sess in enumerate(x):
         DM = y[s]; b_pokes = DM[:,7];  a_pokes = DM[:,6]; task = DM[:,5]; taskid = task_ind(task,a_pokes,b_pokes)
-        if compare_tasks  == 1:
-            taskid_1 = 1; taskid_2 = 2
-
-        elif compare_tasks == 2:
-            taskid_1 = 2; taskid_2 = 3
+        t1, t2 = pair
+        # keep the session if the two layouts are adjacent in time, in either order (bug 30: only the order t2 -> t1
+        # was kept, while the surprise was computed as if t1 came first; for T1-T3 both orders were kept)
+        if np.where(taskid == t1)[0][-1] + 1 == np.where(taskid == t2)[0][0]:
+            first_second = (t1, t2)
+        elif np.where(taskid == t2)[0][-1] + 1 == np.where(taskid == t1)[0][0]:
+            first_second = (t2, t1)
         else:
-            taskid_1 = 1; taskid_2 = 3
-        task_1_rev = np.where(taskid == taskid_1)[0][0]; task_2_rev = np.where(taskid == taskid_2)[0][-1]
-        if task_2_rev+1 == task_1_rev:
-            task_time_confound_data.append(sess)
-            task_time_confound_dm.append(y[s])
-            
-        if compare_tasks == 3:
-            task_1 = np.where(taskid == taskid_1)[0][-1]; task_2 = np.where(taskid == taskid_2)[0][0]
-            if task_1+1 == task_2:
-                task_time_confound_data.append(sess); task_time_confound_dm.append(y[s])
-                
-    return task_time_confound_data,task_time_confound_dm
+            continue
+        task_time_confound_data.append(sess); task_time_confound_dm.append(y[s]); task_order.append(first_second)
+
+    return task_time_confound_data, task_time_confound_dm, task_order
 
 def surprise_plot(HP, PFC):
     """Plot surprise heatmaps around task transitions for all task pairs (Ext Fig 8).
