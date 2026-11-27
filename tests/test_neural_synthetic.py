@@ -273,3 +273,23 @@ def test_svd_panel_is_reproducible_and_prints_its_p_value(capsys):
         svd.run_permutations_and_plot(hp, pfc, d=True, p=20, axis=0, inds=inds, seed=7)
         plt.close('all'); results.append(capsys.readouterr().out)
     assert results[0] == results[1] and 'P = ' in results[0]
+
+
+def test_example_neuron_error_band_uses_each_layouts_own_sem():
+    """The A-rewarded band of the Fig 2 example neuron was drawn with layout 1's s.e.m. in all three layouts."""
+    from functions import plot_neurons
+    from functions.helper_functions import task_ind
+    def noisy_layout_2(rng, DM, fr):
+        fr[DM[:, 5] == 2] *= 10
+    rng = np.random.default_rng(0)
+    d = region(rng, 1, signal=noisy_layout_2)
+    DM, fr = d['DM'][0][0], d['Data'][0][0]
+    plot_neurons.plot_neuron(d, session_id=0, neuron_ID=0)
+    taskid = task_ind(DM[:, 5], DM[:, 6], DM[:, 7])
+    for layout, ax in zip([1, 2, 3], plt.gcf().axes[:3]):
+        trials = fr[(taskid == layout) & (DM[:, 1] == 1) & (DM[:, 2] == 1), 0]
+        sem = trials.std(0) / np.sqrt(len(trials))
+        v = ax.collections[0].get_paths()[0].vertices           # band of the first (A rewarded) trace
+        width = np.array([np.ptp(v[v[:, 0] == x, 1]) for x in range(fr.shape[2])])
+        assert np.allclose(width, 2 * sem)
+    plt.close('all')

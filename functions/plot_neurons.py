@@ -99,8 +99,8 @@ def plot_neuron(data, session_id=0, neuron_ID=0):
                         plt.title(tasks_d[sub-1])
 
                         plt.plot(tasks_fr[sub-1][0][neuron], label ='A Rew',  color = 'green')
-                        plt.fill_between(np.arange(trial_length), tasks_fr[sub-1][0][neuron]+a_rew_1_std[neuron],\
-                                         tasks_fr[sub-1][0][neuron]-a_rew_1_std[neuron],alpha = 0.2,color = 'green')
+                        plt.fill_between(np.arange(trial_length), tasks_fr[sub-1][0][neuron]+tasks_fr_std[sub-1][0][neuron],\
+                                         tasks_fr[sub-1][0][neuron]-tasks_fr_std[sub-1][0][neuron],alpha = 0.2,color = 'green')
         
                         plt.plot(tasks_fr[sub-1][1][neuron], linestyle = ':', label ='A NR',  color = 'green')
                         plt.fill_between(np.arange(trial_length), tasks_fr[sub-1][1][neuron]+tasks_fr_std[sub-1][1][neuron],\

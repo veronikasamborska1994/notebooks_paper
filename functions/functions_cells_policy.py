@@ -253,13 +253,9 @@ def policy_A_B(data, n = 10, perm = True):
     C_1_a = np.concatenate(C_1_a, 0); C_2_a = np.concatenate(C_2_a, 0); C_3_a = np.concatenate(C_3_a, 0)
     C_1_b = np.concatenate(C_1_b, 0); C_2_b = np.concatenate(C_2_b, 0); C_3_b = np.concatenate(C_3_b, 0)
 
-    # build nan/inf mask from A-choice coefficients and apply to both A and B
-    C_2_inf = [~np.isinf(C_2_a[0]).any(axis=1)]; C_2_nan = [~np.isnan(C_2_a[0]).any(axis=1)]
-    C_3_inf = [~np.isinf(C_3_a[0]).any(axis=1)]; C_3_nan = [~np.isnan(C_3_a[0]).any(axis=1)]
-    C_1_inf = [~np.isinf(C_1_a[0]).any(axis=1)]; C_1_nan = [~np.isnan(C_1_a[0]).any(axis=1)]
-    nans = np.asarray(C_1_inf) & np.asarray(C_1_nan) & np.asarray(C_3_inf) & np.asarray(C_3_nan) & np.asarray(C_2_inf) & np.asarray(C_2_nan)
-    C_1_a = np.transpose(C_1_a[:,nans[0],:], [2,0,1]); C_2_a = np.transpose(C_2_a[:,nans[0],:], [2,0,1]); C_3_a = np.transpose(C_3_a[:,nans[0],:], [2,0,1])
-    C_1_b = np.transpose(C_1_b[:,nans[0],:], [2,0,1]); C_2_b = np.transpose(C_2_b[:,nans[0],:], [2,0,1]); C_3_b = np.transpose(C_3_b[:,nans[0],:], [2,0,1])
+    # keep neurons whose coefficients are finite in every layout and choice (coefficients are neurons x time x predictors)
+    keep = np.all([np.isfinite(C).all(axis=(1, 2)) for C in (C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b)], axis=0)
+    C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b = [np.transpose(C[keep], [2, 0, 1]) for C in (C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b)]
     return C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b
 
 def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_HP_b,
