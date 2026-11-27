@@ -21,7 +21,7 @@ from itertools import combinations
 from tqdm.auto import trange
 
 
-from functions.helper_functions import animal_exp_permute, exact_perm_threshold
+from functions.helper_functions import animal_exp_permute, exact_perm_threshold, exact_perm_p
 
 
 def extract_data(data, perm = False, inds =  np.arange(13,51)):
@@ -318,8 +318,11 @@ def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm
         uv_95 = np.percentile(diff_uv,95)*100
     real_uv = trp_hp*100 - trp_pfc*100
     diff_uv = np.asarray(diff_uv)*100
-    k = int(np.sum(diff_uv >= real_uv)) # permutations at least as large as the difference in the data
-    P = k/len(diff_uv) if animal_perm else (1 + k)/(len(diff_uv) + 1)
+    if animal_perm: # the real split is one of the 35, so P >= 1/35; tolerance handles rounding ties
+        P, k = exact_perm_p(real_uv, diff_uv)
+    else:
+        k = int(np.sum(diff_uv >= real_uv - 1e-7)) # permutations at least as large as the difference in the data
+        P = (1 + k)/(len(diff_uv) + 1)
     print('SVD CA1 vs PFC (%s): difference %.4g, 95th percentile %.4g, P = %.4g (%d of %d)' % (
         'cellular and temporal' if d == False else ('cellular' if axis == 1 else 'temporal'), real_uv, uv_95, P, k, len(diff_uv)))
     
