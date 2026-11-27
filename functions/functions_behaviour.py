@@ -262,10 +262,12 @@ def meta_learning_reversals(experiment):
     correct_first = np.mean([1-mean_a_f,mean_b_f],0);  correct_first_std  = np.mean([std_a_f,std_b_f],0)
     correct_last = np.mean([1-mean_a_l,mean_b_l],0); correct_last_std  = np.mean([std_a_l,std_b_l],0)
     plt.figure(figsize=(5,5))      
-    plt.plot(correct_first, color = 'grey')
-    plt.fill_between(np.arange(len(correct_first)), correct_first-correct_first_std, correct_first+correct_first_std, alpha=0.1,color ='grey', label = 'first 10 blocks')
-    plt.plot(correct_last, color = 'black')
-    plt.fill_between(np.arange(len(correct_last)), correct_last-correct_last_std, correct_last+correct_last_std, alpha=0.1,color ='black', label = 'last 10 blocks')
+    # error bands: light grey with an explicit fill colour (grey at alpha 0.1 was almost white, and the black band had no
+    # fill attribute in the SVG, so either band could disappear when the figure was restyled)
+    plt.plot(correct_first, color = 'grey', label = 'first 10 blocks')
+    plt.fill_between(np.arange(len(correct_first)), correct_first-correct_first_std, correct_first+correct_first_std, alpha=0.3, color ='grey', linewidth = 0)
+    plt.plot(correct_last, color = 'black', label = 'last 10 blocks')
+    plt.fill_between(np.arange(len(correct_last)), correct_last-correct_last_std, correct_last+correct_last_std, alpha=0.3, color ='grey', linewidth = 0)
     plt.vlines([tr-0.5],ymin = 0, ymax = 1, color = 'pink', label = 'block switch')
     ticks = np.hstack([-np.flip(np.arange(tr)+1),np.arange(tr)+1])
     plt.xticks(np.arange(20),ticks)
@@ -654,7 +656,7 @@ def plot_policy_during_training(experiment):
     for c,coeff in enumerate(coefs_to_plot):
         plt.subplot(1,4,c+1)
         cl = isl[3]
-        if c > 2:
+        if c > 1: # outcome x choice panels in the outcome colour (was c > 2, so "Previous Outcome x Choice" had the choice colour)
             cl = isl[4]
         plt.errorbar(np.arange(len(coeff)), coeff, yerr=coefs_err[c], fmt='o', color = cl)
         plt.annotate(p_vals_list[c], xy = (10,np.max(coeff)+0.01))

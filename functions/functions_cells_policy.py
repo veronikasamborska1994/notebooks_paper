@@ -22,7 +22,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 from itertools import combinations
 from tqdm.auto import trange
-from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed,
+from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed, circular_shift,
     animal_exp_permute, exact_perm_threshold, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
     XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS, TIME_INDICES, TIME_INDICES_DLC)
 
@@ -136,7 +136,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         
         M_full, Ms = precompute_CPD(X)
         for i in range(perm):  # randomly rolls firing rates with respect to trials
-            y_perm = np.roll(y,np.random.randint(n, n_trials), axis = 0)
+            y_perm = np.roll(y, circular_shift(len(y), n), axis = 0) # shift within the rows actually regressed (bug 29)
             cpd_perm[i].append(CPD_from_precomputed(M_full, Ms, y_perm).reshape(n_neurons, n_timepoints, n_predictors))
     
     cpd_perm   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm],0)

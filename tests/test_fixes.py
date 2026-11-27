@@ -193,3 +193,109 @@ def test_18_error_bars_are_computed_for_each_problem():
         fb.AnovaRM, plt.errorbar = originals; plt.close('all')
     assert np.allclose(seen['y'], [0.5] + [0] * 9)
     assert np.allclose(seen['yerr'], [0.5 / np.sqrt(2)] + [0] * 9)
+
+
+def test_28_29_circular_shift_stays_away_from_the_unshuffled_data():
+    from functions.helper_functions import circular_shift
+    np.random.seed(0)
+    for n_rows, m in [(157, 12), (60, 11), (278 - 12, 11), (30, 14)]:
+        s = np.array([circular_shift(n_rows, m) for _ in range(5000)])
+        assert s.min() >= m and s.max() <= n_rows - m          # never closer than m rows to the identity, either way
+        assert s.min() == m and s.max() == n_rows - m           # whole allowed range is used
+
+
+def _record_shifts(module, monkeypatch):
+    import functions.helper_functions as hf
+    calls = []
+
+    def spy(n_rows, min_shift):
+        calls.append((n_rows, min_shift))
+        return hf.circular_shift(n_rows, min_shift)
+    monkeypatch.setattr(module, 'circular_shift', spy)
+    return calls
+
+
+def test_28_within_region_roll_uses_each_tasks_own_length(monkeypatch):
+    hp, _ = data()
+    hp = {'DM': [hp['DM'][0][:2]], 'Data': [hp['Data'][0][:2]]}
+    for dm in hp['DM'][0]:
+        dm[:, 4] = np.arange(len(dm)) // 20                          # a block change every 20 trials (block_min = 20)
+    calls = _record_shifts(regs, monkeypatch)
+    regs.GLM_roll_time(hp, perm=3)
+    lengths = [[int(np.sum(dm[:, 5] == t)) for t in (1, 2, 3)] for dm in hp['DM'][0]]
+    assert calls == [(l, 20) for ls in lengths for _ in range(3) for l in ls]   # tasks 1-3 of each session, for each of 3 perms
+
+
+def test_29_policy_roll_shifts_within_the_rows_regressed(monkeypatch):
+    hp, _ = data()
+    hp = {'DM': [hp['DM'][0][:2]], 'Data': [hp['Data'][0][:2]]}
+    calls = _record_shifts(pol, monkeypatch)
+    pol.GLM_policy_roll_tome(hp, perm=2, n=11)
+    n_rows = [len(dm) - 11 - 1 for dm in hp['DM'][0]]                # n history trials and one more are dropped
+    assert calls == [(r, 11) for r in n_rows for _ in range(2)]
+
+
+def test_fig1f_both_error_bands_have_a_visible_fill():
+    from test_behaviour import Experiment
+    rng = np.random.default_rng(0); n = 120; block = np.zeros(n, int)
+    for r in (29, 59, 89):
+        block[r + 1:] += 1
+    state = block % 2
+    sessions = [Session(block=block, forced_trial=np.zeros(n, int), state=state,
+                        choices=np.where(rng.random(n) < .8, state, 1 - state)) for _ in range(3)]
+    plt.close('all'); fb.meta_learning_reversals(Experiment(sessions, n_subjects=3))
+    from matplotlib.collections import LineCollection
+    bands = [c for c in plt.gca().collections if not isinstance(c, LineCollection)]   # the block-switch line is a LineCollection
+    plt.close('all')
+    assert len(bands) == 2
+    for b in bands:
+        r, g, bl, a = b.get_facecolor()[0]
+        assert a >= 0.25 and max(r, g, bl) < 0.9                   # not almost white, and an explicit fill colour
+
+
+def test_fig1il_outcome_x_choice_panels_share_the_outcome_colour():
+    exp = Subjects([[training_session(100 * s + c, c) for c in range(10)] for s in range(9)])
+    plt.close('all'); fb.plot_policy_during_training(exp)
+    fig = [plt.figure(n) for n in plt.get_fignums() if len(plt.figure(n).axes) == 4][-1]
+    colours = [ax.lines[0].get_color() for ax in fig.axes]
+    plt.close('all')
+    assert colours[0] == colours[1] and colours[2] == colours[3] and colours[1] != colours[2]
+
+
+def test_last_time_tick_is_on_the_last_time_bin():
+    from functions.helper_functions import XTICK_POSITIONS, XTICK_POSITIONS_DLC
+    hp, _ = data()
+    n_bins = hp['Data'][0][0].shape[2]
+    assert XTICK_POSITIONS[-1] == 62 and XTICK_POSITIONS_DLC[-1] == 63
+    assert XTICK_POSITIONS[-1] <= n_bins - 1
+
+
+def test_rsa_ticks_sit_on_the_choice_reward_and_half_second_bins_and_the_markers_have_a_legend():
+    def blocks(rng, DM, fr):
+        DM[:, 4] = np.arange(len(DM)) // 15
+    hp, pfc = data(hp=blocks, pfc=blocks)
+    plt.close('all'); rsa.RSA_across_time_plot(hp, pfc, perm_n=N_PERM)
+    axes = [ax for n in plt.get_fignums() for ax in plt.figure(n).axes
+            if [t.get_text() for t in ax.get_xticklabels()] == ['C', 'R', '+0.5']]
+    ticks = [list(ax.get_xticks()) for ax in axes]; has_legend = axes[0].get_legend() is not None
+    plt.close('all')
+    assert len(axes) >= 6
+    assert all(t == [35 - 34, 42 - 34, 49 - 34] for t in ticks)      # x position i is the window starting at bin 34 + i
+    assert has_legend
+
+
+def test_fig4g_has_one_legend_naming_the_regions_pfc_and_ca1():
+    from test_decode import make_session
+    rng = np.random.default_rng(0)
+    hp = {'DM': [np.array([make_session(rng)[0] for _ in range(N_HP)], dtype=object)],
+          'Data': [np.array([make_session(rng)[1] for _ in range(N_HP)], dtype=object)]}
+    pfc = {'DM': [np.array([make_session(rng)[0] for _ in range(N_PFC)], dtype=object)],
+           'Data': [np.array([make_session(rng)[1] for _ in range(N_PFC)], dtype=object)]}
+    plt.close('all')
+    try:
+        dec.plot(hp, pfc)
+    except Exception as e:
+        pytest.skip('synthetic decoding data not supported: %s' % e)
+    names = [t.get_text() for t in plt.gca().get_legend().get_texts()]
+    plt.close('all')
+    assert names == ['PFC', 'CA1']

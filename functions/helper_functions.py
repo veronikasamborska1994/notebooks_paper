@@ -16,8 +16,8 @@ HP_SESSIONS_PER_ANIMAL = (15, 7)       # 3 CA1 animals (last group is remainder)
 PFC_SESSIONS_PER_ANIMAL = (9, 16, 13)  # 4 PFC animals (last group is remainder)
 
 # Standard x-axis tick positions and labels for trial-aligned plots
-XTICK_POSITIONS = [0, 12, 24, 35, 42, 49, 63]
-XTICK_POSITIONS_DLC = [0, 12.5, 25, 38, 45, 51, 64]
+XTICK_POSITIONS = [0, 12, 24, 35, 42, 49, 62]      # last tick on the last time bin (63 bins, 0-62)
+XTICK_POSITIONS_DLC = [0, 12.5, 25, 38, 45, 51, 63]  # 64 bins, 0-63
 XTICK_LABELS = ['-1', '-0.5', 'Init', 'Ch', 'R', '+0.5', '+1']
 
 # Key event time indices within trial
@@ -307,3 +307,12 @@ def exponential(x, a, k, b):
     For use with scipy.optimize.curve_fit.
     """
     return a * np.exp(k * x) + b
+
+
+def circular_shift(n_rows, min_shift):
+    """Random circular shift for a roll-permutation null: at least `min_shift` rows away from the unshuffled data
+    in either direction, i.e. uniform on [min_shift, n_rows - min_shift]. `n_rows` must be the length of the array
+    that is rolled (bugs 28 and 29: shifts drawn up to a longer length wrapped round to the identity or near it)."""
+    if n_rows - 2 * min_shift < 0:
+        return np.random.randint(1, n_rows)
+    return np.random.randint(min_shift, n_rows - min_shift + 1)

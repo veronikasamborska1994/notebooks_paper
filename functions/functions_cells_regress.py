@@ -17,7 +17,7 @@ from palettable import wesanderson as wes
 from itertools import combinations
 from math import factorial
 from tqdm.auto import trange
-from functions.helper_functions import _CPD, precompute_CPD, CPD_from_precomputed, animal_exp_permute, exact_perm_threshold, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
+from functions.helper_functions import _CPD, precompute_CPD, CPD_from_precomputed, circular_shift, animal_exp_permute, exact_perm_threshold, XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS
 
 
 def _one_perm_glm(all_subjects_DM, all_subjects_fr, n_HP_sessions):
@@ -260,13 +260,13 @@ def GLM_roll_time(data, perm = 1000, region=''):
         # Precompute residual-making matrices for each task (X is fixed, only y changes)
         precomp = [precompute_CPD(X_t) for X_t in dm_tasks]
         for p in range(perm): # randomly rolls firing rates with respect to trials
-            y_perm_1 = np.roll(firings_tasks[0],np.random.randint(block_min, n_trials), axis = 0)
+            y_perm_1 = np.roll(firings_tasks[0], circular_shift(len(firings_tasks[0]), block_min), axis = 0)
             cpd_perm_1[p].append(CPD_from_precomputed(*precomp[0], y_perm_1).reshape(n_neurons, n_timepoints, n_predictors))
 
-            y_perm_2 = np.roll(firings_tasks[1],np.random.randint(block_min, n_trials), axis = 0)
+            y_perm_2 = np.roll(firings_tasks[1], circular_shift(len(firings_tasks[1]), block_min), axis = 0)
             cpd_perm_2[p].append(CPD_from_precomputed(*precomp[1], y_perm_2).reshape(n_neurons, n_timepoints, n_predictors))
 
-            y_perm_3 = np.roll(firings_tasks[2],np.random.randint(block_min, n_trials), axis = 0)
+            y_perm_3 = np.roll(firings_tasks[2], circular_shift(len(firings_tasks[2]), block_min), axis = 0)
             cpd_perm_3[p].append(CPD_from_precomputed(*precomp[2], y_perm_3).reshape(n_neurons, n_timepoints, n_predictors))
             
     cpd_perm_1   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm_1],0)
