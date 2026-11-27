@@ -323,10 +323,12 @@ def test_30_time_control_keeps_adjacent_layouts_in_either_order_and_compares_ear
     assert order == [(1, 3), (1, 3), (3, 1)]
 
 
-def test_ext2dh_last_free_trial_of_a_layout_is_scored_with_its_own_ports():
-    # trial 19 is the last trial of layout 1 (reversal block 4); A then B is an out-of-sequence poke in layout 1
-    assert np.allclose(rec_pokes(19), [0, 0, 0, 0.2])
-    assert np.allclose(rec_pokes(19, ('A', 'other'), only_A_B=False), [0, 0, 0, 0.2])
+def test_ext2dh_trials_are_scored_with_their_own_layout_and_the_switch_trial_is_left_out():
+    # trial 19 is the last free trial of layout 1 (reversal block 4): its pokes run into the next layout's trials, so it
+    # is left out and block 4 is the mean of trials 15-18; a poke on trial 18 is scored with layout 1's ports
+    assert np.allclose(rec_pokes(19), [0, 0, 0, 0])
+    assert np.allclose(rec_pokes(18), [0, 0, 0, 0.25])
+    assert np.allclose(rec_pokes(18, ('A', 'other'), only_A_B=False), [0, 0, 0, 0.25])
     # the first trial of a layout is scored too (its "no previous choice" reset must not wipe the choice just made)
     assert np.allclose(rec_pokes(0), [0.2, 0, 0, 0])
 
