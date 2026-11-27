@@ -33,6 +33,7 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
 | 24 | The rewarded-streak counter selecting forced trials lagged by a trial and did not reset at an error | Ext 2i, j |
 | 25 | The policy regressor was built with choices coded differently from the logistic fit | Fig 6b-e; Ext 5c, d; Ext 7 |
 | 26 | The animal-split null distributions of the policy tests used a policy over 3 past trials instead of 11 (a variable was overwritten) | Ext 5c, d |
+| 27 | The SVD between-problem projections used the modes of problem 1 for both problem 2 and problem 3 (3 half-steps away for problem 3), the second half of problem 3 was never used, and the within-problem pair for problem 3 was missing; within pairs took modes from the later half and between pairs from the earlier. Now every pair is one half-step apart (within 1a/1b, 2a/2b, 3a/3b; between 1b/2a, 2b/3a) and each pair is used in both directions, with the two curves averaged | Fig 5d-j; Ext 9a-d |
 
 ## Results that change
 
@@ -54,7 +55,12 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
 - Extended Data Fig 5 (animals as the unit): outcome (5a), outcome and problem-specific A
   choice (5b), policy on A (5c, P = 2/35), and A (5d) do not reach P < 0.05.
 - Extended Data Fig 7f: policy on A choices now generalizes more strongly in PFC than CA1 (P < 0.05); the caption says it does not.
-- Extended Data Fig 9d, all time points, cellular and temporal vectors (animals as the unit): P = 2/35 = 0.057; printed above the threshold.
+- Fig 5h-j (CA1 vs PFC; published P in brackets): temporal 5h P = 0.328 (0.128), cellular 5i P = 0.041 (0.018),
+  cellular and temporal 5j P = 0.0024 (0.006). 5h stays not significant, 5i is borderline, 5j holds. Ext 9a-c (session permutations):
+  5h P = 0.310, 0.801, 0.351; 5i P = 0.0002, 0.0002, 0.116 (9c no longer significant); 5j P = 0.0002, 0.0002, 0.018.
+  Ext 9d (animals as the unit): all time points 5h P = 17/35, 5i and 5j P = 1/35 = 0.029 (5j was printed as 2/35, above the threshold);
+  initiation to choice 5h P = 28/35, 5i P = 1/35, 5j P = 3/35.
+- Fig 5g and 5j use cumulative absolute diagonal weights (as coded); the Results text says squared. Fig 5h and 5i use squared sums (variance per mode).
 - Large significance markers are P < 0.01, not P < 0.001.
 - Fig 1k, history of choices: F(9,72) = 2.71, P = 0.009 (printed as P = 0.773).
 - Extended Data Fig 2h (A/B pokes only): the first reversal block differs significantly only from the third
