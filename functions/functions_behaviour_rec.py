@@ -192,18 +192,20 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                         wrong_count = 0
                         choice_state = True
                         choice_state_count += 1
+                        if choice_state_count - 1 in (task_1[0], task_2[0], task_3[0]):
+                            prev_choice = 'forced_state' # first trial of a layout: no previous choice in this layout
                     
                     elif event == 'a_forced_state' or event == 'b_forced_state':
                         prev_choice  = 'forced_state'
                         
                     # choice_state_count is 1-based (it counts the choice states seen so far) and task_k holds 0-based
                     # trial indices: the trial being scored is choice_state_count - 1 (bug: the last free trial of
-                    # layouts 1 and 2 was scored with the next layout's ports, and the session's last trial with none)
+                    # layouts 1 and 2 was scored with the next layout's ports, and the session's last trial with none).
+                    # The reset at the first trial of a layout is done once, at its choice state (above): done on every
+                    # event, it wiped the choice just made, so that trial always scored 0
                     trial = choice_state_count - 1
                     # record task 1 out of sequence pokes           
                     if trial in task_1: # task 1 
-                        if trial == task_1[0]: # first trial of the layout: no previous choice
-                            prev_choice  = 'forced_state'
     
                         if event == poke_A_1:
                             if choice_state == True:
@@ -227,8 +229,6 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                     
                     # record task 2 out of sequence pokes  (same logic as above)                   
                     elif trial in task_2:
-                        if trial == task_2[0]:
-                            prev_choice  = 'forced_state'
     
                         if event == poke_A_2 : 
                             if choice_state == True:
@@ -251,8 +251,6 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                       
                     # record task 3 out of sequence pokes  (same logic as above)                   
                     elif trial in task_3: 
-                        if trial == task_3[0]:
-                            prev_choice  = 'forced_state'
     
                         if event == poke_A_3 : 
                             if choice_state == True:

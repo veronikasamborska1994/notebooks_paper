@@ -327,6 +327,8 @@ def test_ext2dh_last_free_trial_of_a_layout_is_scored_with_its_own_ports():
     # trial 19 is the last trial of layout 1 (reversal block 4); A then B is an out-of-sequence poke in layout 1
     assert np.allclose(rec_pokes(19), [0, 0, 0, 0.2])
     assert np.allclose(rec_pokes(19, ('A', 'other'), only_A_B=False), [0, 0, 0, 0.2])
+    # the first trial of a layout is scored too (its "no previous choice" reset must not wipe the choice just made)
+    assert np.allclose(rec_pokes(0), [0.2, 0, 0, 0])
 
 
 def _layout_session(seed, i, a, b, n=80, block_len=8):
