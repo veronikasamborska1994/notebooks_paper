@@ -112,7 +112,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
     This function also randomly rolls firing rates with respect to trials.'''
     
     dm = data['DM'][0];  firing = data['Data'][0]
-    cpd_perm  = [[] for i in range(perm)] # to store cpds based on permuted data
+    perm_sum = None; n_neurons_total = 0 # running sum over neurons of the permuted cpds (only their neuron mean is used)
     cpd  = [] # to store cpds 
     policy_beh = policy_for_GLM(data, n = n, perm = False)
     for  s in trange(len(dm), desc='Policy GLM roll', leave=False):
@@ -135,11 +135,14 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         cpd.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors)) # calculate coefficients of partial determination
         
         M_full, Ms = precompute_CPD(X)
+        if perm_sum is None:
+            perm_sum = np.zeros((perm, n_timepoints, n_predictors))
+        n_neurons_total += n_neurons
         for i in range(perm):  # randomly rolls firing rates with respect to trials
             y_perm = np.roll(y, circular_shift(len(y), n), axis = 0) # shift within the rows actually regressed (bug 29)
-            cpd_perm[i].append(CPD_from_precomputed(M_full, Ms, y_perm).reshape(n_neurons, n_timepoints, n_predictors))
+            perm_sum[i] += CPD_from_precomputed(M_full, Ms, y_perm).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
     
-    cpd_perm   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm],0)
+    cpd_perm = (perm_sum / n_neurons_total)[:, None] # neuron mean, (perm, 1, n_timepoints, n_predictors)
     cpd = np.concatenate(cpd,0)
     return cpd, cpd_perm
 

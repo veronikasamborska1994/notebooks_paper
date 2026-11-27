@@ -218,7 +218,9 @@ def GLM_roll_time(data, perm = 1000, region=''):
     This function randomly rolls firing rates with respect to trials.'''
 
     dm = data['DM'][0];  firing = data['Data'][0]
-    cpd_perm_1  = [[] for i in range(perm)]; cpd_perm_2  = [[] for i in range(perm)]; cpd_perm_3  = [[] for i in range(perm)] 
+    # permuted CPDs are only used averaged over neurons, so keep a running sum over neurons for each permutation
+    # (storing every neuron for 5,000 permutations needed tens of GB); the shifts are drawn in the same order as before
+    perm_sum = None; n_neurons_total = 0
     cpd_1  = []; cpd_2  = [];  cpd_3 = []
     
     _desc = f'GLM roll {region}' if region else 'GLM roll sessions'
@@ -259,22 +261,24 @@ def GLM_roll_time(data, perm = 1000, region=''):
 
         # Precompute residual-making matrices for each task (X is fixed, only y changes)
         precomp = [precompute_CPD(X_t) for X_t in dm_tasks]
+        if perm_sum is None:
+            perm_sum = np.zeros((perm, 3, n_timepoints, n_predictors))
+        n_neurons_total += n_neurons
         for p in range(perm): # randomly rolls firing rates with respect to trials
             y_perm_1 = np.roll(firings_tasks[0], circular_shift(len(firings_tasks[0]), block_min), axis = 0)
-            cpd_perm_1[p].append(CPD_from_precomputed(*precomp[0], y_perm_1).reshape(n_neurons, n_timepoints, n_predictors))
+            perm_sum[p, 0] += CPD_from_precomputed(*precomp[0], y_perm_1).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
 
             y_perm_2 = np.roll(firings_tasks[1], circular_shift(len(firings_tasks[1]), block_min), axis = 0)
-            cpd_perm_2[p].append(CPD_from_precomputed(*precomp[1], y_perm_2).reshape(n_neurons, n_timepoints, n_predictors))
+            perm_sum[p, 1] += CPD_from_precomputed(*precomp[1], y_perm_2).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
 
             y_perm_3 = np.roll(firings_tasks[2], circular_shift(len(firings_tasks[2]), block_min), axis = 0)
-            cpd_perm_3[p].append(CPD_from_precomputed(*precomp[2], y_perm_3).reshape(n_neurons, n_timepoints, n_predictors))
+            perm_sum[p, 2] += CPD_from_precomputed(*precomp[2], y_perm_3).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
             
-    cpd_perm_1   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm_1],0)
-    cpd_perm_2   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm_2],0)
-    cpd_perm_3  = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm_3],0)
-
     cpd_1 = np.concatenate(cpd_1,0); cpd_2 = np.concatenate(cpd_2,0); cpd_3 = np.concatenate(cpd_3,0)
-    cpd = np.nanmean([cpd_1,cpd_2,cpd_3],0);  cpd_perm = np.nanmean([cpd_perm_1,cpd_perm_2,cpd_perm_3],0)
+    cpd = np.nanmean([cpd_1,cpd_2,cpd_3],0)
+    # mean over the three problems and over neurons: (perm, 1, n_timepoints, n_predictors), with a neuron axis of size 1
+    # so that callers averaging over axis 1 get the same values as before (the data have no NaNs, so nanmean = mean)
+    cpd_perm = (perm_sum.sum(1) / (3 * n_neurons_total))[:, None]
 
     return cpd,cpd_perm
 

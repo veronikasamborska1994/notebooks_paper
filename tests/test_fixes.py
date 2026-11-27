@@ -361,3 +361,47 @@ def test_c3_an_interrupted_problem_is_left_out(monkeypatch):
     without = fb.policy_training(Subjects([full]))[0]
     plt.close('all')
     assert len(with_it) == 10 and np.allclose(with_it, without)
+
+
+def _spy_cpds(module, monkeypatch):
+    """Record every permuted CPD array (neurons x time x predictors) in the order it is computed."""
+    seen = []; original = module.CPD_from_precomputed
+
+    def spy(*a):
+        out = original(*a); seen.append(np.array(out)); return out
+    monkeypatch.setattr(module, 'CPD_from_precomputed', spy)
+    return seen
+
+
+def test_lean_glm_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypatch):
+    def blocks(rng, DM, fr):
+        DM[:, 4] = np.arange(len(DM)) // 15
+    hp, _ = data(hp=blocks)
+    hp = {'DM': [hp['DM'][0][:3]], 'Data': [hp['Data'][0][:3]]}
+    seen = _spy_cpds(regs, monkeypatch); n_perm = 4
+    np.random.seed(0); _, lean = regs.GLM_roll_time(hp, perm=n_perm)
+    # rebuild the full null as the original code stored it: per session, per permutation, problems 1-3
+    shapes = [(len(fr), fr.shape[1] * fr.shape[2]) for fr in hp['Data'][0]]
+    full = [[[None] * 3 for _ in range(n_perm)] for _ in shapes]; k = 0
+    for s, (_, _) in enumerate(shapes):
+        for p in range(n_perm):
+            for t in range(3):
+                n_neu, n_t = hp['Data'][0][s].shape[1:]
+                full[s][p][t] = seen[k].reshape(n_neu, n_t, -1); k += 1
+    per_task = [np.stack([np.concatenate([full[s][p][t] for s in range(len(shapes))], 0) for p in range(n_perm)]) for t in range(3)]
+    reference = np.mean(np.nanmean(per_task, 0), 1)                   # mean over problems, then over neurons
+    assert lean.shape == (n_perm, 1) + reference.shape[1:]
+    assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)
+
+
+def test_lean_policy_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypatch):
+    hp, _ = data()
+    hp = {'DM': [hp['DM'][0][:3]], 'Data': [hp['Data'][0][:3]]}
+    seen = _spy_cpds(pol, monkeypatch); n_perm = 3
+    np.random.seed(0); _, lean = pol.GLM_policy_roll_tome(hp, perm=n_perm, n=11)
+    k = 0; per_perm = [[] for _ in range(n_perm)]
+    for fr in hp['Data'][0]:
+        for p in range(n_perm):
+            per_perm[p].append(seen[k].reshape(fr.shape[1], fr.shape[2], -1)); k += 1
+    reference = np.mean(np.stack([np.concatenate(c, 0) for c in per_perm]), 1)
+    assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)
