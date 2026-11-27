@@ -267,7 +267,7 @@ def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_H
                           c_1, time_ind):
     '''Shared inner computation for permute_policy_A_B: given policy coefficients for HP and PFC
     on A and B choices across three tasks, compute cross-task correlation slices and return the
-    permuted difference and PFC-HP difference arrays.'''
+    PFC - CA1 difference for A (index 0) and B (index 1) choices.'''
     init_t = time_ind[0]; ch_t = time_ind[1]; r_t = time_ind[2]
     C_1_HP = [C_1_HP_a, C_1_HP_b]; C_2_HP = [C_2_HP_a, C_2_HP_b]; C_3_HP = [C_3_HP_a, C_3_HP_b]
     C_1_PFC = [C_1_PFC_a, C_1_PFC_b]; C_2_PFC = [C_2_PFC_a, C_2_PFC_b]; C_3_PFC = [C_3_PFC_a, C_3_PFC_b]
@@ -306,10 +306,7 @@ def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_H
                                np.mean(coefs_tasks[6:9], 0), np.mean(coefs_tasks[9:12], 0),
                                np.mean(coefs_tasks[12:15], 0), np.mean(coefs_tasks[15:18], 0)])
 
-    b_a = np.asarray(task_mean_A_B[0]) - np.asarray(task_mean_A_B[1]) # A - B (index 0 is A, 1 is B)
-    diff = np.asarray(b_a[3:]) - np.asarray(b_a[:3])
-    pfc_hp = np.asarray(task_mean_A_B)[:,3:] - np.asarray(task_mean_A_B)[:,:3]
-    return diff, pfc_hp
+    return np.asarray(task_mean_A_B)[:,3:] - np.asarray(task_mean_A_B)[:,:3]
 
 
 def _one_perm_policy_A_B(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind):
@@ -341,15 +338,13 @@ def permute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, anim
     n_pfc_sessions = PFC['DM'][0].shape[0]
 
     if animal_perm == False:
-        results = [_one_perm_policy_A_B(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind)
-                   for _ in trange(perm_n, desc='Policy corr perms', leave=False)]
-        diff_PFC_HP_perm = [r[0] for r in results]
-        PFC_HP_perm = [r[1] for r in results]
+        PFC_HP_perm = [_one_perm_policy_A_B(all_subjects, all_subjects_firing, n_pfc_sessions, n, c_1, time_ind)
+                       for _ in trange(perm_n, desc='Policy corr perms', leave=False)]
     else:
         animals_PFC = [0,1,2,3]; animals_HP = [4,5,6]
         m, n_animals = len(animals_PFC), len(animals_HP)
         all_subjects_DM, all_subjects_fr = animal_exp_permute(HP, PFC)
-        diff_PFC_HP_perm = []; PFC_HP_perm = []
+        PFC_HP_perm = []
         for indices_PFC in combinations(range(m + n_animals), m):
             indices_HP = [i for i in range(m + n_animals) if i not in indices_PFC]
             DM_PFC_perm = np.concatenate(np.asarray(all_subjects_DM, dtype=object)[np.asarray(indices_PFC)], 0)
@@ -359,11 +354,10 @@ def permute_policy_A_B(HP, PFC, c_1 = 1, n = 11, perm_n = 500, dlc = False, anim
             HP_shuffle = [DM_HP_perm, firing_HP_perm]; PFC_shuffle = [DM_PFC_perm, firing_PFC_perm]
             C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_HP_b = policy_A_B(HP_shuffle, n=n, perm=True)
             C_1_PFC_a, C_2_PFC_a, C_3_PFC_a, C_1_PFC_b, C_2_PFC_b, C_3_PFC_b = policy_A_B(PFC_shuffle, n=n, perm=True)
-            diff, pfc_hp = _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_HP_b,
-                                                 C_1_PFC_a, C_2_PFC_a, C_3_PFC_a, C_1_PFC_b, C_2_PFC_b, C_3_PFC_b,
-                                                 c_1, time_ind)
-            diff_PFC_HP_perm.append(diff); PFC_HP_perm.append(pfc_hp)
-    return diff_PFC_HP_perm, PFC_HP_perm
+            PFC_HP_perm.append(_compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_HP_b,
+                                                    C_1_PFC_a, C_2_PFC_a, C_3_PFC_a, C_1_PFC_b, C_2_PFC_b, C_3_PFC_b,
+                                                    c_1, time_ind))
+    return PFC_HP_perm
 
 def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, animal_perm = False):
     ''' This function calculates and plots correlation slices through time of coefficients at initiation, 
@@ -427,26 +421,18 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
         task_mean_A_B.append([np.mean(coefs_tasks[:3],0),np.mean(coefs_tasks[3:6],0), np.mean(coefs_tasks[6:9],0),np.mean(coefs_tasks[9:12],0),np.mean(coefs_tasks[12:15],0), np.mean(coefs_tasks[15:18],0)])
     
     # find permuted differences
-    diff_PFC_HP_perm, PFC_HP_perm = permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm)
-    diff_PFC_HP_perm = np.asarray(diff_PFC_HP_perm);  PFC_HP_perm  = np.asarray(PFC_HP_perm); task_mean_A_B = np.asarray(task_mean_A_B)
+    PFC_HP_perm = np.asarray(permute_policy_A_B(HP, PFC, c_1 = c_1, n = n, perm_n = perm_n, dlc = dlc, animal_perm = animal_perm))
+    task_mean_A_B = np.asarray(task_mean_A_B)
 
-    b_a = np.asarray(task_mean_A_B[0])- np.asarray(task_mean_A_B[1]) # real A - B choice policy difference (index 0 is A, 1 is B)
-    diff_PFC_HP = np.asarray(b_a[3:])- np.asarray(b_a[:3]) # (A - B) PFC - (A - B) CA1 = (B - A) CA1 - (B - A) PFC: positive where CA1 has the larger B - A difference
-
-    # Max-statistic correction for B-A difference: max across anchors and time per permutation, then percentile
-    n_p = len(diff_PFC_HP_perm)
-    max_ba_per_perm = np.max(diff_PFC_HP_perm.reshape(n_p, -1), axis=1)  # (perm_n,)
     # animal permutations: only 35 splits, so use exact rank-based thresholds (P < .01 cannot be reached)
     if animal_perm:
         _thr = exact_perm_threshold
     else:
         _thr = lambda null, alpha: np.percentile(null, 100*(1 - alpha))
-    _95th_ba = _thr(max_ba_per_perm, 0.05); _99th_ba = _thr(max_ba_per_perm, 0.01)
-    indx_b_a_diff_05 = np.where(diff_PFC_HP > _95th_ba)
-    indx_b_a_diff_01 = np.where(diff_PFC_HP > _99th_ba)
 
-    # Max-statistic correction for A and B separately
+    # Max-statistic correction for A and B separately: max across anchors and time per permutation, then percentile
     # PFC_HP_perm shape: (perm_n, 2, 3, n_timepoints) — 2=A/B, 3=init/ch/rew
+    n_p = len(PFC_HP_perm)
     max_a_per_perm = np.max(PFC_HP_perm[:, 0].reshape(n_p, -1), axis=1)  # (perm_n,)
     max_b_per_perm = np.max(PFC_HP_perm[:, 1].reshape(n_p, -1), axis=1)
     _95th_a = _thr(max_a_per_perm, 0.05); _99th_a = _thr(max_a_per_perm, 0.01)
@@ -481,11 +467,6 @@ def plot_correlations_slice(PFC, HP, n = 11, c_1 = 1, perm_n = 2, dlc = False, a
                     p_b_01 = significant_diff_b_01[1][np.where(significant_diff_b_01[0] == per)[0]]
                     axs[per].plot(p_b_05, np.ones(p_b_05.shape)*ymax + 0.05, '.', markersize = 2, color = 'pink', label = 'B PFC vs CA1 < .05' if animal_perm else None)
                     axs[per].plot(p_b_01, np.ones(p_b_01.shape)*ymax + 0.05, '.', markersize = 4, color = 'pink', label = None if animal_perm else 'B PFC vs CA1 < .01')
-                    # B - A difference: P < .05 (small dots) and P < .01 (large dots)
-                    p_ba_05 = indx_b_a_diff_05[1][np.where(indx_b_a_diff_05[0] == per)[0]]
-                    p_ba_01 = indx_b_a_diff_01[1][np.where(indx_b_a_diff_01[0] == per)[0]]
-                    axs[per].plot(p_ba_05, np.ones(p_ba_05.shape)*ymax + 0.08, '.', markersize = 2, color = 'grey', label = 'B - A PFC vs CA1 < .05' if animal_perm else None)
-                    axs[per].plot(p_ba_01, np.ones(p_ba_01.shape)*ymax + 0.08, '.', markersize = 4, color = 'grey', label = None if animal_perm else 'B - A PFC vs CA1 < .01')
                     axs[per].set_xticks(_xticks)
                     axs[per].set_ylim(-0.15, ymax+0.1)
                     axs[per].set_xticklabels(XTICK_LABELS)
