@@ -587,7 +587,9 @@ def plot_diagonal_sums(HP, PFC,c_1 = 1, perm_n = 2, dlc = False, animal_perm = F
     for d, diff in enumerate(diffs):
         plt.subplot(1,2,d+1)
         plt.hist(diff, color = 'grey', alpha = 0.5)
-        plt.vlines(real[d],ymin = 0, ymax = max(np.histogram(diff)[0]),  color = 'pink', label = 'Difference in the data')
+        # with 35 animal splits the data often coincide with the threshold: draw them dashed on top so both show
+        plt.vlines(real[d],ymin = 0, ymax = max(np.histogram(diff)[0]),  color = 'pink', label = 'Difference in the data',
+                   linestyles = '--' if animal_perm else '-', zorder = 3)
         plt.vlines(perm_diff[d], ymin = 0, ymax = max(np.histogram(diff)[0]), color = 'black', label = 'permutation threshold (P < .05)')
         plt.xlabel('Permuted differences'); plt.ylabel('Count')
         plt.legend(fontsize = 7)

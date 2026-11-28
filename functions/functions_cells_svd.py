@@ -329,7 +329,9 @@ def run_permutations_and_plot(HP, PFC, d = True, p = 1000, axis = 0, animal_perm
         'cellular and temporal' if d == False else ('cellular' if axis == 1 else 'temporal'), real_uv, uv_95, P, k, len(diff_uv)))
     
     plt.hist(diff_uv, color = 'grey', alpha = 0.5)
-    plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Difference in the data')
+    # with 35 animal splits the data often coincide with the threshold: draw them dashed on top so both show
+    plt.vlines(real_uv, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'pink', label = 'Difference in the data',
+               linestyles = '--' if animal_perm else '-', zorder = 3)
     plt.vlines(uv_95, ymin = 0, ymax = max(np.histogram(diff_uv)[0]), color = 'black', label = 'permutation threshold (P < .05)')
     plt.ylabel('Count')
     plt.xlabel('Permuted differences')
