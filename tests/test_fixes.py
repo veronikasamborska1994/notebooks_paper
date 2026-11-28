@@ -408,3 +408,12 @@ def test_lean_policy_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypat
             per_perm[p].append(seen[k].reshape(fr.shape[1], fr.shape[2], -1)); k += 1
     reference = np.mean(np.stack([np.concatenate(c, 0) for c in per_perm]), 1)
     assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)
+
+
+def test_fig6b_panels_are_ca1_then_pfc_as_in_the_paper():
+    hp, pfc = data()
+    hp = {'DM': [hp['DM'][0][:2]], 'Data': [hp['Data'][0][:2]]}; pfc = {'DM': [pfc['DM'][0][:2]], 'Data': [pfc['Data'][0][:2]]}
+    plt.close('all'); pol.plot_policy_simple_GLM(hp, pfc, n_perm=2)
+    titles = [ax.get_title() for ax in plt.gcf().axes]
+    plt.close('all')
+    assert titles == ['CA1', 'PFC']
