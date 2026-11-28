@@ -378,6 +378,8 @@ def test_lean_glm_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypatch)
         DM[:, 4] = np.arange(len(DM)) // 15
     hp, _ = data(hp=blocks)
     hp = {'DM': [hp['DM'][0][:3]], 'Data': [hp['Data'][0][:3]]}
+    # a neuron that is silent in problem 2 has no CPD there (NaN), as in the real data; the mean over problems skips it
+    dm, fr = hp['DM'][0][0], hp['Data'][0][0]; fr[dm[:, 5] == 2, 0, :] = 0
     seen = _spy_cpds(regs, monkeypatch); n_perm = 4
     np.random.seed(0); _, lean = regs.GLM_roll_time(hp, perm=n_perm)
     # rebuild the full null as the original code stored it: per session, per permutation, problems 1-3
@@ -390,6 +392,7 @@ def test_lean_glm_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypatch)
                 full[s][p][t] = seen[k].reshape(n_neu, n_t, -1); k += 1
     per_task = [np.stack([np.concatenate([full[s][p][t] for s in range(len(shapes))], 0) for p in range(n_perm)]) for t in range(3)]
     reference = np.mean(np.nanmean(per_task, 0), 1)                   # mean over problems, then over neurons
+    assert np.isnan(per_task[1]).any() and not np.isnan(reference).any()
     assert lean.shape == (n_perm, 1) + reference.shape[1:]
     assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)
 

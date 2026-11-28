@@ -262,23 +262,27 @@ def GLM_roll_time(data, perm = 1000, region=''):
         # Precompute residual-making matrices for each task (X is fixed, only y changes)
         precomp = [precompute_CPD(X_t) for X_t in dm_tasks]
         if perm_sum is None:
-            perm_sum = np.zeros((perm, 3, n_timepoints, n_predictors))
+            perm_sum = np.zeros((perm, n_timepoints, n_predictors))
         n_neurons_total += n_neurons
+        shape = (n_neurons, n_timepoints, n_predictors)
         for p in range(perm): # randomly rolls firing rates with respect to trials
             y_perm_1 = np.roll(firings_tasks[0], circular_shift(len(firings_tasks[0]), block_min), axis = 0)
-            perm_sum[p, 0] += CPD_from_precomputed(*precomp[0], y_perm_1).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
+            c_1 = CPD_from_precomputed(*precomp[0], y_perm_1).reshape(shape)
 
             y_perm_2 = np.roll(firings_tasks[1], circular_shift(len(firings_tasks[1]), block_min), axis = 0)
-            perm_sum[p, 1] += CPD_from_precomputed(*precomp[1], y_perm_2).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
+            c_2 = CPD_from_precomputed(*precomp[1], y_perm_2).reshape(shape)
 
             y_perm_3 = np.roll(firings_tasks[2], circular_shift(len(firings_tasks[2]), block_min), axis = 0)
-            perm_sum[p, 2] += CPD_from_precomputed(*precomp[2], y_perm_3).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
+            c_3 = CPD_from_precomputed(*precomp[2], y_perm_3).reshape(shape)
+            # as before: nanmean over the three problems for each neuron (some neurons have no CPD in a problem), then
+            # summed over the neurons of this session
+            perm_sum[p] += np.nanmean([c_1, c_2, c_3], 0).sum(0)
             
     cpd_1 = np.concatenate(cpd_1,0); cpd_2 = np.concatenate(cpd_2,0); cpd_3 = np.concatenate(cpd_3,0)
     cpd = np.nanmean([cpd_1,cpd_2,cpd_3],0)
-    # mean over the three problems and over neurons: (perm, 1, n_timepoints, n_predictors), with a neuron axis of size 1
-    # so that callers averaging over axis 1 get the same values as before (the data have no NaNs, so nanmean = mean)
-    cpd_perm = (perm_sum.sum(1) / (3 * n_neurons_total))[:, None]
+    # neuron mean of the problem-averaged permuted cpds: (perm, 1, n_timepoints, n_predictors), with a neuron axis of
+    # size 1 so that callers averaging over axis 1 get the same values as before
+    cpd_perm = (perm_sum / n_neurons_total)[:, None]
 
     return cpd,cpd_perm
 
