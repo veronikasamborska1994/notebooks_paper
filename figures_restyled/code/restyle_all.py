@@ -55,6 +55,12 @@ def go(name,png_sync=None,drop=None,pre=None,**kw):
     if png_sync: sync_markers_to_png(f,png_sync)
     if pre: pre(f)
     if name in COMPACT and 'scale' in kw: kw['scale']*=(0.84 if 'policy_corr' in name or 'policy_animal_1' in name else 0.72)   # closer to the printed panel size
+    if name.startswith('fig'):
+        post0=kw.get('post')
+        def post_main(F,axs,H,fig,post0=post0):
+            if post0: post0(F,axs,H,fig)
+            for ax in axs: ax.title.set_fontweight('normal')
+        kw['post']=post_main
     render(f,OUT+name,fmt=('svg',),**kw); print('ok',name)
 def thin_x(keep):
     def post(F,axs,H,fig):
@@ -66,6 +72,10 @@ def thin_x(keep):
 def _iv(t):
     try: return int(t.replace('\u2212','-'))
     except Exception: return None
+def post_solid(F,axs,H,fig):
+    for ax in axs:
+        for l in ax.lines:
+            if l.get_linestyle() not in ('-','None','') and l.get_marker() in (None,'None',''): l.set_linestyle('-'); l.set_color(GREY); l.set_linewidth(1.0)
 EVEN=thin_x(lambda t: _iv(t) is not None and _iv(t)%2==0)
 ODD=thin_x(lambda t: _iv(t) is not None and _iv(t)%2==1)
 def post_pct(F,axs,H,fig):
@@ -79,7 +89,7 @@ GREEN='#99c772'; PINK='#ef9bc2'; BGREEN='#829c81'; BPINK='#d571aa'
 def post_glm(F,axs,H,fig):
     for i,ax in enumerate(axs):
         xt=ax.get_xticks()
-        for xi,c in ((2,GREY),(3,INK),(4,INK)): ax.axvline(xt[xi],color=c,lw=0.5,zorder=0)
+        for xi,c,ls in ((2,'#c8c8c8','-'),(3,INK,(0,(3,1.5))),(4,'#e28aa5','-')): ax.axvline(xt[xi],color=c,lw=0.5,ls=ls,zorder=0)   # initiation, choice, outcome as printed
         stamp(ax)
         if i: ax.set_ylabel('')
     hs=[Line2D([],[],color=CA1,lw=1,label='CA1'),Line2D([],[],color=PFC,lw=1,label='PFC'),
@@ -135,7 +145,10 @@ def post_ca1(F,axs,H,fig):
     for ax in axs:
         lg=ax.get_legend()
         if lg:
-            for t in lg.get_texts(): t.set_text(t.get_text().replace('HP','CA1'))
+            hs=lg.legend_handles; labs=[t.get_text().replace('HP','CA1') for t in lg.get_texts()]
+            key=lambda l: (2 if 'shuffle' in l else 1 if 'different' in l else 0, 0 if l.startswith('PFC') else 1)
+            o=sorted(range(len(labs)),key=lambda i: key(labs[i])); lg.remove()
+            ax.legend([hs[i] for i in o],[labs[i] for i in o],loc='upper left',bbox_to_anchor=(1.02,1.0),handlelength=1.4,labelspacing=0.2,borderaxespad=0)
 for n,sh in (('fig5dh_svd_main_1','time'),('fig5dh_svd_main_2','cell'),('fig5dh_svd_main_3','time'),('fig5dh_svd_main_4','cell')):
     go(n,scale=0.6,cmap=SV,text=svt(sh),legend='right',post=post_ca1)
 go('fig5de_svd_brains',scale=0.6,cmap={'#008000':'#0b918f','#ffc0cb':'#cac5d5'},text=[(r'^Temporal Modes$','Temporal singular vectors between\nregions')]+svt('time'),legend='right')
@@ -209,13 +222,17 @@ go('fig1ij_policy_training_3',scale=0.5,post=ODD,annot=[(r'^0$','p < .01'),(r'^0
 F1T=[(r'^Number of Out of Sequence Pokes$','Number of out-of-sequence\npokes per trial'),(r'^Number of Trials Till Threshold$','Number of trials\nto threshold'),(r'^Problem Number$','Problem'),(r'^Reversal Number$','Reversal number'),(r'^Probability of Choosing New Best Option$','Probability of choosing\nnew best option'),(r'^Trial # Before/After Reversal$','Trial number'),(r'^Mean Number of Out of Sequence Pokes$','Mean number of\nout-of-sequence pokes per trial'),(r'^Out of Sequence Pokes$','Mean number of\nout-of-sequence pokes per trial'),(r'^first 10 blocks$','First 10 blocks'),(r'^last 10 blocks$','Last 10 blocks'),(r'^block switch$','Reversal'),(r'^first 5 tasks$','First 5 problems'),(r'^last 5 tasks$','Last 5 problems'),(r'^problem (\d+)$',r'Problem \1')]
 F1C=dict(REG); F1C.update({'#ffc0cb':BPINK})
 for n in ('fig1e_trials_reversal_1','fig1e_trials_reversal_2','fig1f_meta_learning','fig1gh_out_of_sequence_1','fig1gh_out_of_sequence_2','fig1gh_out_of_sequence_3'):
-    go(n,scale=0.55 if '_2' not in n else 0.4,cmap=F1C,text=F1T,legend='right' if '_2' in n else 'best',post=EVEN if n=='fig1f_meta_learning' else None)
+    c=dict(F1C)
+    if n=='fig1f_meta_learning': c['#ffc0cb']='#d9777c'          # reversal line
+    if n=='fig1gh_out_of_sequence_3': c['#ffc0cb']='#eeb0bb'     # last 5 problems
+    go(n,scale=0.55 if '_2' not in n else 0.4,cmap=c,text=F1T,legend='right' if '_2' in n else 'best',post=EVEN if n=='fig1f_meta_learning' else post_solid if n in ('fig1e_trials_reversal_1','fig1gh_out_of_sequence_1') else None)
+E2C=dict(REG); E2C.update({'#ffc0cb':CA1,'#800080':PFC})   # CA1 / PFC bars
 E2J=[(r'^As$','A port'),(r'^Bs$','B port'),(r'^Other$','Other\nports'),(r'^Poke Identity$','Port identity'),(r'^Choice Probability$','Probability of first poke (%)'),(r'^A good, B forced$','B forced trials (A good)'),(r'^B good, A forced$','A forced trials (B good)')]
 E4T=[(r'^cells with (Init|Ch) Peak in T(\d) firing in T(\d)$',r'Cells with \1. peak in layout \2,\nfiring in layout \3')]
 for n in ('ext2ij_forced_1','ext2ij_forced_2','ext2ac_reversals_rec_1','ext2ac_reversals_rec_2','ext2ac_reversals_rec_3','ext2df_oos_rec_1','ext2df_oos_rec_2','ext2df_oos_rec_3','ext2df_oos_rec_4','ext4_remapping_1','ext4_remapping_5'):
     if 'forced' in n: go(n,scale=0.55,cmap=REG,post=post_pct,text=E2J)
     elif n=='ext4_remapping_5': go(n,scale=0.55,cmap=REG,text=E4T,gap=(1.3,1.15),xrot=r'Ch|Out')
-    else: go(n,scale=0.55 if '_2' not in n else 0.4,cmap=REG,text=F1T if n.startswith('ext2') else ())
+    else: go(n,scale=0.55 if '_2' not in n else 0.4,cmap=E2C,text=F1T if n.startswith('ext2') else (),post=post_solid if n.startswith('ext2') else None)
 # ---------- Ext 7 (DLC-aligned versions of 4C-E, 6B-E) and rest of Ext 4
 RTT=[(r'^A vs B choice$','A vs B Choice'),(r'^Outcome at A vs B$','Outcome\nat A vs B'),(r'^Choice vs Initiation$','Choice vs\nInitiation'),(r'^Problem Specific A choice$','Problem Specific\nA Choice')]
 go('ext7_dlc_rsa_1',scale=0.52,cmap=REG,ms=1.8,post=post_rsa1,xrot=r'Ch|Out',text=RTT,gap=(1.05,1))
@@ -231,7 +248,7 @@ for n in ('ext4_remapping_2','ext4_remapping_3','ext4_remapping_4','ext4_remappi
 for n in ('ext2dg_oos_all_1','ext2dg_oos_all_2','ext2dg_oos_all_3','ext2dg_oos_all_4'):
     if 'forced' in n: go(n,scale=0.55,cmap=REG,post=post_pct,text=E2J)
     elif n=='ext4_remapping_5': go(n,scale=0.55,cmap=REG,text=E4T,gap=(1.3,1.15),xrot=r'Ch|Out')
-    else: go(n,scale=0.55 if '_2' not in n else 0.4,cmap=REG,text=F1T if n.startswith('ext2') else ())
+    else: go(n,scale=0.55 if '_2' not in n else 0.4,cmap=E2C,text=F1T if n.startswith('ext2') else (),post=post_solid if n.startswith('ext2') else None)
 def post_dec3(F,axs,H,fig):
     # cell numbers: white on dark cells, ink on light cells (as in the generated figure)
     for ax in axs:
