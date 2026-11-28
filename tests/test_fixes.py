@@ -65,9 +65,9 @@ def test_2_large_markers_are_labelled_p_01(permutation_figures):
 def test_5_decoding_returns_both_directions_for_pfc():
     rng = np.random.default_rng(0)
     hp, pfc = region(rng, N_HP, ntr=180), region(rng, N_PFC, ntr=180)
-    out = dec.permute_subjects(hp, pfc)
-    xy, yx = dec.decoder_trial_states(pfc, task_test=3, H=1, perm=False)
-    assert np.allclose(out[4][2], xy) and np.allclose(out[5][2], yx) and not np.allclose(xy, yx)
+    out = dec.permute_subjects(hp, pfc, draws=1)
+    assert out[4].shape == out[5].shape == (3, 4, 7, 7)        # PFC: train x / test y, and train y / test x
+    assert not np.allclose(out[4][2], out[5][2])
 
 
 def test_6_cross_region_projection_uses_the_modes_of_the_same_problem():
@@ -300,7 +300,7 @@ def test_fig4g_has_one_legend_naming_the_regions_pfc_and_ca1():
            'Data': [np.array([make_session(rng)[1] for _ in range(N_PFC)], dtype=object)]}
     plt.close('all')
     try:
-        dec.plot(hp, pfc)
+        dec.plot(hp, pfc, draws=2)
     except Exception as e:
         pytest.skip('synthetic decoding data not supported: %s' % e)
     names = [t.get_text() for t in plt.gca().get_legend().get_texts()]

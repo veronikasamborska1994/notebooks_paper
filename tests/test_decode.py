@@ -52,6 +52,33 @@ def test_too_few_trials_excludes_session(sim):
     assert dec._session_patterns(fr, dm, 3) is not None
 
 
+def test_each_state_contributes_n_trials_drawn_from_the_whole_layout(sim):
+    """11 trials per state (2 time bins each), drawn at random from all trials of the state, not the last ones."""
+    dm, fr = sim[0][0][0], sim[1][0][0]
+    x, y = dec._session_patterns(fr, dm, 3, np.random.default_rng(0))
+    assert dec.N_TRIALS == dec.MIN_TRIALS + 1 == 11
+    assert x.shape == y.shape == (7 * dec.N_TRIALS * 2, fr.shape[1])
+    # mark the initiation activity of every trial with its trial number: the draw must reach early trials
+    marked = fr.copy(); marked[:, 0, dec.BIN_INIT] = np.arange(len(fr))
+    x = dec._session_patterns(marked, dm, 3, np.random.default_rng(0))[0]
+    drawn = x[1:2 * dec.N_TRIALS:2, 0]                       # initiation samples of layout 2, second bin
+    layout2 = np.where(dm[:, 5] == 2)[0]
+    assert len(set(drawn)) == dec.N_TRIALS and set(drawn) <= set(layout2)
+    assert drawn.min() < layout2[-dec.N_TRIALS]              # not only the last trials
+    again = dec._session_patterns(marked, dm, 3, np.random.default_rng(0))[0]
+    assert np.array_equal(x, again)                          # same seed, same draw
+
+
+def test_matrices_are_averaged_over_draws():
+    from test_fixes import region, N_HP, N_PFC
+    rng = np.random.default_rng(0)
+    hp, pfc = region(rng, N_HP, ntr=180), region(rng, N_PFC, ntr=180)
+    one = dec.permute_subjects(hp, pfc, draws=1)[2]
+    two = dec.permute_subjects(hp, pfc, draws=2)[2]
+    assert np.array_equal(one, dec.permute_subjects(hp, pfc, draws=1)[2])     # seeded
+    assert np.allclose(two.sum(-1), 100) and two.shape == one.shape
+
+
 def test_animal_null_enumerates_35_splits():
     real, null = dec.animal_permutation_null(np.array([1., 2, 3]), np.array([10., 11, 12, 13]), 1)
     assert len(null) == 35 and np.isclose(real, null.max()) and np.isclose(real, null[0])
