@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="326.624163pt" height="222.634258pt" viewBox="0 0 326.624163 222.634258" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="332.224162pt" height="222.634258pt" viewBox="0 0 332.224162 222.634258" xmlns="http://www.w3.org/2000/svg" version="1.1">
  <metadata>
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-11-28T15:20:58.900672</dc:date>
+    <dc:date>2026-11-28T15:26:31.169403</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -22,8 +22,8 @@
  <g id="figure_1">
   <g id="patch_1">
    <path d="M 0 222.634258 
-L 326.624163 222.634258 
-L 326.624163 0 
+L 332.224162 222.634258 
+L 332.224162 0 
 L 0 0 
 z
 " style="fill: #ffffff"/>
@@ -41,12 +41,12 @@ z
     <g id="xtick_1">
      <g id="line2d_1">
       <defs>
-       <path id="mb30b7d49fe" d="M 0 0 
+       <path id="m7e612d6fc4" d="M 0 0 
 L 0 2 
 " style="stroke: #1d1d1b; stroke-width: 0.5"/>
       </defs>
       <g>
-       <use xlink:href="#mb30b7d49fe" x="37.91669" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="37.91669" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_1">
@@ -56,7 +56,7 @@ L 0 2
     <g id="xtick_2">
      <g id="line2d_2">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="62.104529" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="62.104529" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_2">
@@ -66,7 +66,7 @@ L 0 2
     <g id="xtick_3">
      <g id="line2d_3">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="86.292368" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="86.292368" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_3">
@@ -76,7 +76,7 @@ L 0 2
     <g id="xtick_4">
      <g id="line2d_4">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="110.480206" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="110.480206" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_4">
@@ -86,7 +86,7 @@ L 0 2
     <g id="xtick_5">
      <g id="line2d_5">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="134.668045" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="134.668045" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_5">
@@ -96,7 +96,7 @@ L 0 2
     <g id="xtick_6">
      <g id="line2d_6">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="158.855884" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="158.855884" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_6">
@@ -106,7 +106,7 @@ L 0 2
     <g id="xtick_7">
      <g id="line2d_7">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="183.043722" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="183.043722" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_7">
@@ -116,7 +116,7 @@ L 0 2
     <g id="xtick_8">
      <g id="line2d_8">
       <g>
-       <use xlink:href="#mb30b7d49fe" x="207.231561" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#m7e612d6fc4" x="207.231561" y="189.050859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_8">
@@ -132,12 +132,12 @@ L 0 2
     <g id="ytick_1">
      <g id="line2d_9">
       <defs>
-       <path id="m9fa02ff92e" d="M 0 0 
+       <path id="meb72943585" d="M 0 0 
 L -2 0 
 " style="stroke: #1d1d1b; stroke-width: 0.5"/>
       </defs>
       <g>
-       <use xlink:href="#m9fa02ff92e" x="28.785781" y="182.568023" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#meb72943585" x="28.785781" y="182.568023" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_10">
@@ -147,7 +147,7 @@ L -2 0
     <g id="ytick_2">
      <g id="line2d_10">
       <g>
-       <use xlink:href="#m9fa02ff92e" x="28.785781" y="152.11259" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#meb72943585" x="28.785781" y="152.11259" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_11">
@@ -157,7 +157,7 @@ L -2 0
     <g id="ytick_3">
      <g id="line2d_11">
       <g>
-       <use xlink:href="#m9fa02ff92e" x="28.785781" y="121.657158" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#meb72943585" x="28.785781" y="121.657158" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_12">
@@ -167,7 +167,7 @@ L -2 0
     <g id="ytick_4">
      <g id="line2d_12">
       <g>
-       <use xlink:href="#m9fa02ff92e" x="28.785781" y="91.201725" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#meb72943585" x="28.785781" y="91.201725" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_13">
@@ -177,7 +177,7 @@ L -2 0
     <g id="ytick_5">
      <g id="line2d_13">
       <g>
-       <use xlink:href="#m9fa02ff92e" x="28.785781" y="60.746292" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#meb72943585" x="28.785781" y="60.746292" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_14">
@@ -187,7 +187,7 @@ L -2 0
     <g id="ytick_6">
      <g id="line2d_14">
       <g>
-       <use xlink:href="#m9fa02ff92e" x="28.785781" y="30.290859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
+       <use xlink:href="#meb72943585" x="28.785781" y="30.290859" style="fill: #1d1d1b; stroke: #1d1d1b; stroke-width: 0.5"/>
       </g>
      </g>
      <g id="text_15">
@@ -195,7 +195,7 @@ L -2 0
      </g>
     </g>
     <g id="text_16">
-     <text style="font-size: 8px; font-family: 'Arial', 'Liberation Sans'; text-anchor: middle; fill: #1d1d1b" x="9.424219" y="105.890859" transform="rotate(-90 9.424219 105.890859)">Cumulative Weight (Normalised)</text>
+     <text style="font-size: 8px; font-family: 'Arial', 'Liberation Sans'; text-anchor: middle; fill: #1d1d1b" x="9.424219" y="105.890859" transform="rotate(-90 9.424219 105.890859)">Cumulative weight (normalized)</text>
     </g>
    </g>
    <g id="line2d_15">
@@ -245,7 +245,7 @@ L 190.300074 30.417905
 L 206.022169 30.337387 
 L 220.534872 30.290859 
 L 220.534872 30.290859 
-" clip-path="url(#pe0c33e755e)" style="fill: none; stroke: #252552; stroke-linecap: round"/>
+" clip-path="url(#p4c7090992c)" style="fill: none; stroke: #252552; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="line2d_16">
     <path d="M 37.91669 181.490859 
@@ -271,7 +271,7 @@ L 155.227708 168.806315
 L 209.650345 168.29606 
 L 220.534872 168.259664 
 L 220.534872 168.259664 
-" clip-path="url(#pe0c33e755e)" style="fill: none; stroke: #8696b2; stroke-linecap: round"/>
+" clip-path="url(#p4c7090992c)" style="fill: none; stroke: #8696b2; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="line2d_17">
     <path d="M 37.91669 160.300204 
@@ -316,7 +316,7 @@ L 172.159195 78.332963
 L 199.975209 78.107883 
 L 220.534872 78.031578 
 L 220.534872 78.031578 
-" clip-path="url(#pe0c33e755e)" style="fill: none; stroke-dasharray: 3.7,1.6; stroke-dashoffset: 0; stroke: #252552"/>
+" clip-path="url(#p4c7090992c)" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #252552; stroke-width: 1.2"/>
    </g>
    <g id="line2d_18">
     <path d="M 37.91669 161.456508 
@@ -378,7 +378,7 @@ L 168.531019 30.840561
 L 186.671898 30.522807 
 L 220.534872 30.290859 
 L 220.534872 30.290859 
-" clip-path="url(#pe0c33e755e)" style="fill: none; stroke: #d8b3bb; stroke-linecap: round"/>
+" clip-path="url(#p4c7090992c)" style="fill: none; stroke: #d8b3bb; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="line2d_19">
     <path d="M 37.91669 179.94264 
@@ -419,7 +419,7 @@ L 167.321627 155.331333
 L 199.975209 154.790329 
 L 220.534872 154.632801 
 L 220.534872 154.632801 
-" clip-path="url(#pe0c33e755e)" style="fill: none; stroke: #cac5d5; stroke-linecap: round"/>
+" clip-path="url(#p4c7090992c)" style="fill: none; stroke: #cac5d5; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="line2d_20">
     <path d="M 37.91669 177.762216 
@@ -486,7 +486,7 @@ L 184.253114 115.628817
 L 206.022169 115.430034 
 L 220.534872 115.355475 
 L 220.534872 115.355475 
-" clip-path="url(#pe0c33e755e)" style="fill: none; stroke-dasharray: 3.7,1.6; stroke-dashoffset: 0; stroke: #d8b3bb"/>
+" clip-path="url(#p4c7090992c)" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #d8b3bb; stroke-width: 1.2"/>
    </g>
    <g id="patch_3">
     <path d="M 28.785781 189.050859 
@@ -500,70 +500,70 @@ L 229.665781 189.050859
    </g>
    <g id="text_17">
     <text style="font-size: 8px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(62.087656 10.023828)">Cellular and temporal singular vectors</text>
-    <text style="font-size: 8px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(106.848281 18.730859)">(Cell shuffle)</text>
+    <text style="font-size: 8px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(107.737031 18.730859)">(cell shuffle)</text>
    </g>
    <g id="legend_1">
     <g id="line2d_21">
-     <path d="M 236.483381 33.235918 
-L 241.383381 33.235918 
-L 246.283381 33.235918 
-" style="fill: none; stroke: #252552; stroke-linecap: square"/>
+     <path d="M 240.683381 37.435918 
+L 246.283381 37.435918 
+L 251.883381 37.435918 
+" style="fill: none; stroke: #252552; stroke-width: 1.2; stroke-linecap: square"/>
     </g>
     <g id="text_18">
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(251.883381 31.151709)">PFC same problem</text>
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(251.883381 38.770361)">cross-validated</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(257.483381 35.351709)">PFC same problem</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(257.483381 42.970361)">cross-validated</text>
     </g>
     <g id="line2d_22">
-     <path d="M 236.483381 49.873223 
-L 241.383381 49.873223 
-L 246.283381 49.873223 
-" style="fill: none; stroke: #d8b3bb; stroke-linecap: square"/>
+     <path d="M 240.683381 54.073223 
+L 246.283381 54.073223 
+L 251.883381 54.073223 
+" style="fill: none; stroke: #d8b3bb; stroke-width: 1.2; stroke-linecap: square"/>
     </g>
     <g id="text_19">
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(251.883381 47.789014)">CA1 same problem</text>
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(251.883381 55.407666)">cross-validated</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(257.483381 51.989014)">CA1 same problem</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; fill: #1d1d1b" transform="translate(257.483381 59.607666)">cross-validated</text>
     </g>
     <g id="line2d_23">
-     <path d="M 236.483381 61.45166 
-L 241.383381 61.45166 
-L 246.283381 61.45166 
-" style="fill: none; stroke-dasharray: 3.7,1.6; stroke-dashoffset: 0; stroke: #252552"/>
+     <path d="M 240.683381 65.65166 
+L 246.283381 65.65166 
+L 251.883381 65.65166 
+" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #252552; stroke-width: 1.2"/>
     </g>
     <g id="text_20">
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="251.883381" y="63.90166" transform="rotate(-0 251.883381 63.90166)">PFC different problem</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="257.483381" y="68.10166" transform="rotate(-0 257.483381 68.10166)">PFC different problem</text>
     </g>
     <g id="line2d_24">
-     <path d="M 236.483381 69.420996 
-L 241.383381 69.420996 
-L 246.283381 69.420996 
-" style="fill: none; stroke-dasharray: 3.7,1.6; stroke-dashoffset: 0; stroke: #d8b3bb"/>
+     <path d="M 240.683381 73.620996 
+L 246.283381 73.620996 
+L 251.883381 73.620996 
+" style="fill: none; stroke-dasharray: 4.44,1.92; stroke-dashoffset: 0; stroke: #d8b3bb; stroke-width: 1.2"/>
     </g>
     <g id="text_21">
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="251.883381" y="71.870996" transform="rotate(-0 251.883381 71.870996)">CA1 different problem</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="257.483381" y="76.070996" transform="rotate(-0 257.483381 76.070996)">CA1 different problem</text>
     </g>
     <g id="line2d_25">
-     <path d="M 236.483381 77.390332 
-L 241.383381 77.390332 
-L 246.283381 77.390332 
-" style="fill: none; stroke: #8696b2; stroke-linecap: square"/>
+     <path d="M 240.683381 81.590332 
+L 246.283381 81.590332 
+L 251.883381 81.590332 
+" style="fill: none; stroke: #8696b2; stroke-width: 1.2; stroke-linecap: square"/>
     </g>
     <g id="text_22">
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="251.883381" y="79.840332" transform="rotate(-0 251.883381 79.840332)">PFC cell shuffle</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="257.483381" y="84.040332" transform="rotate(-0 257.483381 84.040332)">PFC cell shuffle</text>
     </g>
     <g id="line2d_26">
-     <path d="M 236.483381 85.359668 
-L 241.383381 85.359668 
-L 246.283381 85.359668 
-" style="fill: none; stroke: #cac5d5; stroke-linecap: square"/>
+     <path d="M 240.683381 89.559668 
+L 246.283381 89.559668 
+L 251.883381 89.559668 
+" style="fill: none; stroke: #cac5d5; stroke-width: 1.2; stroke-linecap: square"/>
     </g>
     <g id="text_23">
-     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="251.883381" y="87.809668" transform="rotate(-0 251.883381 87.809668)">CA1 cell shuffle</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Liberation Sans'; text-anchor: start; fill: #1d1d1b" x="257.483381" y="92.009668" transform="rotate(-0 257.483381 92.009668)">CA1 cell shuffle</text>
     </g>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="pe0c33e755e">
+  <clipPath id="p4c7090992c">
    <rect x="28.785781" y="22.730859" width="200.88" height="166.32"/>
   </clipPath>
  </defs>
