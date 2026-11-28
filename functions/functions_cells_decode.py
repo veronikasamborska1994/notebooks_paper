@@ -264,9 +264,12 @@ def plot(HP, PFC, same_port=True):
     
     # plot subjects
     hp_str = np.hstack([np.tile('Correct',4), np.tile('Position \n in Trial Sequence',4),np.tile('Port',4), np.tile('Correct',3), np.tile('Position \n in Trial Sequence',3), np.tile('Port',3),])
-    area = np.hstack([np.tile('PFC',12),np.tile('HP',9)]) 
+    area = np.hstack([np.tile('PFC',12),np.tile('CA1',9)]) 
     decode = np.hstack([subj_pfc_gen, subj_pfc_seq, subj_pfc_b,subj_hp_gen, subj_hp_seq, subj_hp_b])
     data_ = {'Decoding': decode, 'Label': hp_str, 'Area':area}
     df = pd.DataFrame(data = data_)
     sns.swarmplot(x = "Label", y = "Decoding", hue = 'Area', palette="Set2", dodge = True, data = df)
+    # one legend (bars: PFC, CA1), outside the axes so it covers no data points (the swarm legend repeated it as "HP")
+    handles, names = ax.get_legend_handles_labels()
+    ax.legend(handles[:2], names[:2], title = 'Area', frameon = False, loc = 'upper left', bbox_to_anchor = (1, 1))
     sns.despine()

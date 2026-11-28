@@ -22,6 +22,30 @@ from statsmodels.stats.anova import AnovaRM
 from functions.helper_functions import exp_mov_ave
 from functions.helper_functions import exponential
 
+
+MIN_REVERSALS_PER_PROBLEM = 5 # problems with fewer reversals were interrupted (in the data: layout 653 in mice 478, 480
+                              # and 481, one session with 2-4 reversals; every other problem has at least 9)
+
+
+def problem_id(session):
+    """Port layout of a session (initiation, A, B). Problems were told apart by the initiation port alone, which merged
+    two problems that share it (615 and 653 in mice 478, 480 and 481)."""
+    td = session.trial_data
+    return (int(td['configuration_i'][0]), int(td['poke_A'][0]), int(td['poke_B'][0]))
+
+
+def interrupted_problem_sessions(sessions):
+    """Indices of the sessions of problems with fewer than MIN_REVERSALS_PER_PROBLEM reversals (within sessions)."""
+    runs = []                                                     # [problem, [session indices], reversals]
+    for j, session in enumerate(sessions):
+        td = session.trial_data; forced = np.where(td['forced_trial'] == 1)[0]
+        n_rev = int(np.sum(np.diff(np.delete(td['block'], forced)) == 1))
+        if not runs or runs[-1][0] != problem_id(session):
+            runs.append([problem_id(session), [], 0])
+        runs[-1][1].append(j); runs[-1][2] += n_rev
+    return {j for _, js, n_rev in runs if n_rev < MIN_REVERSALS_PER_PROBLEM for j in js}
+
+
 def session_plot_moving_average(session):
     """Plot choices, outcomes, state, and exponential moving average for one session (Fig 1D).
 
@@ -86,7 +110,11 @@ def trials_till_reversal_plot(experiment):
         reversal_number = 0 # reset current rev number for each subject
         previous_session_config = 0 #reset config for each subject 
         trials_from_prev_session = 0
+        pending_state = None # state of a block that crossed threshold just before its session ended
+        skip = interrupted_problem_sessions(subject_sessions)
         for j, session in enumerate(subject_sessions):
+            if j in skip:
+                continue
             sessions_block = session.trial_data['block']
             n_trials = session.trial_data['n_trials']
             prt = (session.trial_data['pre-reversal trials'] > 0).astype(int) # find trials where count till block reversal begins
@@ -103,17 +131,24 @@ def trials_till_reversal_plot(experiment):
             block_transitions = sessions_block[1:] - sessions_block[:-1] # find actual block transitions
             reversal_trials = np.where(block_transitions == 1)[0] # indicies of block transitions
             
-            configuration = session.trial_data['configuration_i'] # check configuration to detect if it changed from last session
-            if configuration[0]!= previous_session_config:
+            configuration = problem_id(session) # check the port layout to detect if the problem changed from last session
+            if configuration != previous_session_config:
                 reversal_number = 0
                 task_number += 1 
                 trials_from_prev_session = 0
-                previous_session_config = configuration[0]  
+                previous_session_config = configuration
+                pending_state = None
+            # the previous session ended after this block crossed threshold but before the reversal: if the block goes on
+            # (same state), its crossing in this session is the same block again and must not take a second slot
+            repeat_crossing = pending_state is not None and session.trial_data['state'][0] == pending_state
+            pending_state = None
     
             # trials since the last reversal: the first crossing of a session also counts the trials carried over
             # from earlier sessions of the same problem; later ones count from the preceding reversal
             # (reversal_trials holds the last trial of each block)
             for i, crossing_trial in enumerate(threshold_crossing_trials):
+                if i == 0 and repeat_crossing:
+                    continue
                 if reversal_number <= 9:
                     if i == 0:
                         reversal_to_threshold[n_subj, task_number-1, reversal_number] = trials_from_prev_session + crossing_trial + 1
@@ -130,6 +165,7 @@ def trials_till_reversal_plot(experiment):
                 # session ended after a crossing but before the reversal: in the data the next session always starts
                 # with the countdown off and the threshold has to be crossed again, so the count restarts
                 trials_from_prev_session = 0
+                pending_state = session.trial_data['state'][-1]
    
     # organize data for ANOVAs
     rev = np.tile(np.arange(reversals),n_subjects*tasks); task_n = np.tile(np.repeat(np.arange(tasks),reversals),n_subjects); n_subj = np.repeat(np.arange(n_subjects),tasks*reversals)
@@ -262,10 +298,12 @@ def meta_learning_reversals(experiment):
     correct_first = np.mean([1-mean_a_f,mean_b_f],0);  correct_first_std  = np.mean([std_a_f,std_b_f],0)
     correct_last = np.mean([1-mean_a_l,mean_b_l],0); correct_last_std  = np.mean([std_a_l,std_b_l],0)
     plt.figure(figsize=(5,5))      
-    plt.plot(correct_first, color = 'grey')
-    plt.fill_between(np.arange(len(correct_first)), correct_first-correct_first_std, correct_first+correct_first_std, alpha=0.1,color ='grey', label = 'first 10 blocks')
-    plt.plot(correct_last, color = 'black')
-    plt.fill_between(np.arange(len(correct_last)), correct_last-correct_last_std, correct_last+correct_last_std, alpha=0.1,color ='black', label = 'last 10 blocks')
+    # error bands: light grey with an explicit fill colour (grey at alpha 0.1 was almost white, and the black band had no
+    # fill attribute in the SVG, so either band could disappear when the figure was restyled)
+    plt.plot(correct_first, color = 'grey', label = 'first 10 blocks')
+    plt.fill_between(np.arange(len(correct_first)), correct_first-correct_first_std, correct_first+correct_first_std, alpha=0.3, color ='grey', linewidth = 0)
+    plt.plot(correct_last, color = 'black', label = 'last 10 blocks')
+    plt.fill_between(np.arange(len(correct_last)), correct_last-correct_last_std, correct_last+correct_last_std, alpha=0.3, color ='grey', linewidth = 0)
     plt.vlines([tr-0.5],ymin = 0, ymax = 1, color = 'pink', label = 'block switch')
     ticks = np.hstack([-np.flip(np.arange(tr)+1),np.arange(tr)+1])
     plt.xticks(np.arange(20),ticks)
@@ -301,13 +339,16 @@ def out_of_sequence(experiment, first_task_only=False):
         all_reversals = []
         all_tasks = []
 
+        skip = interrupted_problem_sessions(subject_sessions)
         for j, session in enumerate(subject_sessions): 
+            if j in skip:
+                continue
             trials = session.trial_data['n_trials']
             sessions_block = session.trial_data['block']
             forced_trials = session.trial_data['forced_trial']
             forced_array = np.where(forced_trials == 1)[0] 
             trials = trials - len(forced_array) 
-            configuration = session.trial_data['configuration_i'] 
+            configuration = problem_id(session) # port layout (initiation, A, B)
             poke_A = 'poke_'+str(session.trial_data['poke_A'][0])
             poke_B = 'poke_'+str(session.trial_data['poke_B'][0])
             
@@ -355,10 +396,10 @@ def out_of_sequence(experiment, first_task_only=False):
             elif j > 0: 
                 all_sessions_wrong_ch += session_wrong_choice[:trials] # appends wrong choice counts
                 
-            if configuration[0]!= previous_session_config: # if configuration changed make sure to reset everything
+            if configuration != previous_session_config: # if configuration changed make sure to reset everything
                 reversal_number = 0 
                 task_number += 1 
-                previous_session_config = configuration[0]  
+                previous_session_config = configuration  
             
             for i in range(trials):
                 for r in reversal_trials:
@@ -527,15 +568,19 @@ def policy_training(experiment, subject_IDs='all'):
     for n_subj, subject_ID in enumerate(subject_IDs):
         subject_sessions = experiment.get_sessions(subject_IDs=[subject_ID])
         results_task = [];  results_session = [] # regression coefficients for tasks and sessions    
+        skip = interrupted_problem_sessions(subject_sessions)
+        kept = [j for j in range(len(subject_sessions)) if j not in skip]
         for j, session in enumerate(subject_sessions):
+            if j in skip:
+                continue
             choices = session.trial_data['choices']
-            all_sessions = len(subject_sessions)-1 # to store last session
-            configuration = session.trial_data['configuration_i'] 
-            if j == 0:
-                previous_session_config = configuration[0] # if first session find poke configuration 
+            all_sessions = kept[-1] # to store last session
+            configuration = problem_id(session) # port layout (initiation, A, B)
+            if j == kept[0]:
+                previous_session_config = configuration # if first session find poke configuration 
                 
-            elif configuration[0]!= previous_session_config: # check if configuration changed in this session
-                previous_session_config = configuration[0]
+            elif configuration != previous_session_config: # check if configuration changed in this session
+                previous_session_config = configuration
                 results_task.append(np.mean(results_session,0)) # append results if configuration changed
                 results_session = [] # reset for next problem
                 
@@ -552,7 +597,7 @@ def policy_training(experiment, subject_IDs='all'):
                 results_session.append(results.coef_[0]) # store coefficients
             
                 if j == all_sessions:
-                    previous_session_config = configuration[0]  
+                    previous_session_config = configuration  
                     results_task.append(np.mean(results_session,0)) # make sure to store last session
                 
         coef_subj.append(results_task) # subject coefficients for each task in training 
@@ -654,7 +699,7 @@ def plot_policy_during_training(experiment):
     for c,coeff in enumerate(coefs_to_plot):
         plt.subplot(1,4,c+1)
         cl = isl[3]
-        if c > 2:
+        if c > 1: # outcome x choice panels in the outcome colour (was c > 2, so "Previous Outcome x Choice" had the choice colour)
             cl = isl[4]
         plt.errorbar(np.arange(len(coeff)), coeff, yerr=coefs_err[c], fmt='o', color = cl)
         plt.annotate(p_vals_list[c], xy = (10,np.max(coeff)+0.01))

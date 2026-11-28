@@ -22,7 +22,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 from itertools import combinations
 from tqdm.auto import trange
-from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed,
+from functions.helper_functions import (task_ind, _CPD, precompute_CPD, CPD_from_precomputed, circular_shift,
     animal_exp_permute, exact_perm_threshold, HP_SESSIONS_PER_ANIMAL, PFC_SESSIONS_PER_ANIMAL,
     XTICK_POSITIONS, XTICK_POSITIONS_DLC, XTICK_LABELS, TIME_INDICES, TIME_INDICES_DLC)
 
@@ -112,7 +112,7 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
     This function also randomly rolls firing rates with respect to trials.'''
     
     dm = data['DM'][0];  firing = data['Data'][0]
-    cpd_perm  = [[] for i in range(perm)] # to store cpds based on permuted data
+    perm_sum = None; n_neurons_total = 0 # running sum over neurons of the permuted cpds (only their neuron mean is used)
     cpd  = [] # to store cpds 
     policy_beh = policy_for_GLM(data, n = n, perm = False)
     for  s in trange(len(dm), desc='Policy GLM roll', leave=False):
@@ -135,11 +135,14 @@ def GLM_policy_roll_tome(data, perm = 1000, n = 11):
         cpd.append(_CPD(X,y).reshape(n_neurons, n_timepoints, n_predictors)) # calculate coefficients of partial determination
         
         M_full, Ms = precompute_CPD(X)
+        if perm_sum is None:
+            perm_sum = np.zeros((perm, n_timepoints, n_predictors))
+        n_neurons_total += n_neurons
         for i in range(perm):  # randomly rolls firing rates with respect to trials
-            y_perm = np.roll(y,np.random.randint(n, n_trials), axis = 0)
-            cpd_perm[i].append(CPD_from_precomputed(M_full, Ms, y_perm).reshape(n_neurons, n_timepoints, n_predictors))
+            y_perm = np.roll(y, circular_shift(len(y), n), axis = 0) # shift within the rows actually regressed (bug 29)
+            perm_sum[i] += CPD_from_precomputed(M_full, Ms, y_perm).reshape(n_neurons, n_timepoints, n_predictors).sum(0)
     
-    cpd_perm   = np.stack([np.concatenate(cpd_i,0) for cpd_i in cpd_perm],0)
+    cpd_perm = (perm_sum / n_neurons_total)[:, None] # neuron mean, (perm, 1, n_timepoints, n_predictors)
     cpd = np.concatenate(cpd,0)
     return cpd, cpd_perm
 
@@ -253,13 +256,9 @@ def policy_A_B(data, n = 10, perm = True):
     C_1_a = np.concatenate(C_1_a, 0); C_2_a = np.concatenate(C_2_a, 0); C_3_a = np.concatenate(C_3_a, 0)
     C_1_b = np.concatenate(C_1_b, 0); C_2_b = np.concatenate(C_2_b, 0); C_3_b = np.concatenate(C_3_b, 0)
 
-    # build nan/inf mask from A-choice coefficients and apply to both A and B
-    C_2_inf = [~np.isinf(C_2_a[0]).any(axis=1)]; C_2_nan = [~np.isnan(C_2_a[0]).any(axis=1)]
-    C_3_inf = [~np.isinf(C_3_a[0]).any(axis=1)]; C_3_nan = [~np.isnan(C_3_a[0]).any(axis=1)]
-    C_1_inf = [~np.isinf(C_1_a[0]).any(axis=1)]; C_1_nan = [~np.isnan(C_1_a[0]).any(axis=1)]
-    nans = np.asarray(C_1_inf) & np.asarray(C_1_nan) & np.asarray(C_3_inf) & np.asarray(C_3_nan) & np.asarray(C_2_inf) & np.asarray(C_2_nan)
-    C_1_a = np.transpose(C_1_a[:,nans[0],:], [2,0,1]); C_2_a = np.transpose(C_2_a[:,nans[0],:], [2,0,1]); C_3_a = np.transpose(C_3_a[:,nans[0],:], [2,0,1])
-    C_1_b = np.transpose(C_1_b[:,nans[0],:], [2,0,1]); C_2_b = np.transpose(C_2_b[:,nans[0],:], [2,0,1]); C_3_b = np.transpose(C_3_b[:,nans[0],:], [2,0,1])
+    # keep neurons whose coefficients are finite in every layout and choice (coefficients are neurons x time x predictors)
+    keep = np.all([np.isfinite(C).all(axis=(1, 2)) for C in (C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b)], axis=0)
+    C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b = [np.transpose(C[keep], [2, 0, 1]) for C in (C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b)]
     return C_1_a, C_2_a, C_3_a, C_1_b, C_2_b, C_3_b
 
 def _compute_perm_result(C_1_HP_a, C_2_HP_a, C_3_HP_a, C_1_HP_b, C_2_HP_b, C_3_HP_b,

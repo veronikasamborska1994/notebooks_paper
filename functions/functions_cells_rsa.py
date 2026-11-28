@@ -20,7 +20,7 @@ from itertools import combinations
 from math import factorial
 import palettable
 from tqdm.auto import trange
-from functions.helper_functions import task_ind, _cpd, animal_exp_permute, exact_perm_threshold
+from functions.helper_functions import task_ind, _cpd, animal_exp_permute, exact_perm_threshold, TIME_INDICES, TIME_INDICES_DLC
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +331,10 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
     ch_init_sig_99 = np.where(diff_ch_init > cpd_p_val_mult_compar_99[ch_i])[0]; a_spec_sig_99 = np.where(diff_a_spec > cpd_p_val_mult_compar_99[tsp])[0]
 
     # --- Plotting ---
-    inds = [1,8,int(len(cue)/2),len(cue)-1]; isl = wes.Royal2_5.mpl_colors; k = 'grey'
+    # x position i is the window starting at bin cue[i]; ticks at the choice, reward and +0.5 s bins
+    # (the "+1 s" bin, 63 or 64, lies past the last window, so it gets no tick)
+    tick_bins = TIME_INDICES[1:] + [49] if not dlc else TIME_INDICES_DLC[1:] + [51]
+    inds = [b - cue[0] for b in tick_bins]; isl = wes.Royal2_5.mpl_colors; k = 'grey'
     if dlc == False:
         sbplt = 7
         sign_95 = [space_sig, a_b_sig, rew_sig, rew_ab_sig, ch_init_sig, a_spec_sig]
@@ -348,13 +351,15 @@ def RSA_across_time_plot(HP, PFC, perm_n = 5, animal_perm = False, dlc = False):
         plt.subplot(1,sbplt, pred+1)
         plt.plot(cpd_HP_list[:,pred]*100, color = isl[0])
         plt.plot(cpd_PFC_list[:,pred]*100, color = isl[3])
-        plt.xticks(inds,['C', 'R', '+0.5','+1'])
+        plt.xticks(inds,['C', 'R', '+0.5'])
         plt.plot(sign_95[pred], np.ones(len(sign_95[pred]))*(np.max([cpd_HP_list[:,pred],cpd_PFC_list[:,pred]]))*100+ offset[pred], '.', markersize = 2, color = 'grey')
-        plt.plot(sign_99[pred], np.ones(len(sign_99[pred]))*(np.max([cpd_HP_list[:,pred],cpd_PFC_list[:,pred]]))*100+ offset[pred], '.', markersize = 4, color = 'grey',label = '< .01 diff PFC and HP ')
+        plt.plot(sign_99[pred], np.ones(len(sign_99[pred]))*(np.max([cpd_HP_list[:,pred],cpd_PFC_list[:,pred]]))*100+ offset[pred], '.', markersize = 4, color = 'grey',label = '< .01 diff PFC and CA1')
         plt.ylim(-0.1,(np.max([cpd_HP_list[:,pred], cpd_PFC_list[:,pred]]))*100+offset[pred]+1)
         plt.ylabel('CPD (%)')
         plt.title(pred_str[pred])
         plt.xlabel('Time in Trial (s)')
+        if pred == 0:
+            plt.legend(fontsize = 6, frameon = False) # the large (P < .01) markers were labelled but no legend was drawn
     plt.tight_layout(); sns.despine()
 
     cmap =  palettable.scientific.sequential.Acton_3.mpl_colormap

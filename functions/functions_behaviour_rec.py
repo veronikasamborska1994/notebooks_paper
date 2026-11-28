@@ -192,14 +192,20 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                         wrong_count = 0
                         choice_state = True
                         choice_state_count += 1
+                        if choice_state_count - 1 in (task_1[0], task_2[0], task_3[0]):
+                            prev_choice = 'forced_state' # first trial of a layout: no previous choice in this layout
                     
                     elif event == 'a_forced_state' or event == 'b_forced_state':
                         prev_choice  = 'forced_state'
                         
+                    # choice_state_count is 1-based (it counts the choice states seen so far) and task_k holds 0-based
+                    # trial indices: the trial being scored is choice_state_count - 1 (bug: the last free trial of
+                    # layouts 1 and 2 was scored with the next layout's ports, and the session's last trial with none).
+                    # The reset at the first trial of a layout is done once, at its choice state (above): done on every
+                    # event, it wiped the choice just made, so that trial always scored 0
+                    trial = choice_state_count - 1
                     # record task 1 out of sequence pokes           
-                    if choice_state_count in task_1: # task 1 
-                        if choice_state_count == task_1[0]: # first trial is always a forced 
-                            prev_choice  = 'forced_state'
+                    if trial in task_1: # task 1 
     
                         if event == poke_A_1:
                             if choice_state == True:
@@ -222,9 +228,7 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                                                
                     
                     # record task 2 out of sequence pokes  (same logic as above)                   
-                    elif choice_state_count in task_2:
-                        if choice_state_count == task_2[0]:
-                            prev_choice  = 'forced_state'
+                    elif trial in task_2:
     
                         if event == poke_A_2 : 
                             if choice_state == True:
@@ -246,9 +250,7 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                                     wrong_count += 1 
                       
                     # record task 3 out of sequence pokes  (same logic as above)                   
-                    elif choice_state_count in task_3: 
-                        if choice_state_count == task_3[0]:
-                            prev_choice  = 'forced_state'
+                    elif trial in task_3: 
     
                         if event == poke_A_3 : 
                             if choice_state == True:
@@ -271,12 +273,15 @@ def out_of_sequence_recordings(experiment, only_A_B = True):
                                     wrong_count += 1 
                       
                 # counts are appended at the next choice, so drop the first (empty) one and add the last trial's
-                session_wrong_choice = (session_wrong_choice[1:] + [wrong_count])[:len(task)]
+                session_wrong_choice = np.asarray((session_wrong_choice[1:] + [wrong_count])[:len(task)], dtype=float)
+                # the pokes after the last free trial of layouts 1 and 2 (up to the next choice state) belong to the next
+                # layout's free-reward and forced trials, so that trial is left out of its block mean (it was always 0)
+                session_wrong_choice[[task_1[-1], task_2[-1]]] = np.nan
                 reversal_trials = np.insert(reversal_trials + 1,0,0) # first trial of each block
                 reversal_trials = np.append(reversal_trials,len(task)); reversal_mean = []
                 for i,revs in enumerate(reversal_trials):
                      if i > 0 and i < len(reversal_trials)-1:
-                        reversal_mean.append(np.mean(session_wrong_choice[reversal_trials[i-1]:revs]))
+                        reversal_mean.append(np.nanmean(session_wrong_choice[reversal_trials[i-1]:revs]))
                          
                 
                    

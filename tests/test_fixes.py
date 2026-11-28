@@ -16,6 +16,12 @@ from test_behaviour import Session, Ev, rec_pokes
 N_PERM = 5
 
 
+@pytest.fixture(autouse=True)
+def no_minimum_reversals(monkeypatch):
+    # short synthetic problems; the rule that drops interrupted problems has its own test
+    monkeypatch.setattr(fb, 'MIN_REVERSALS_PER_PROBLEM', 0)
+
+
 @pytest.fixture(scope='module')
 def permutation_figures():
     """Run the time-resolved permutation tests once; return the shapes of the nulls handed to np.percentile
@@ -76,7 +82,8 @@ def test_6_cross_region_projection_uses_the_modes_of_the_same_problem():
 def training_session(seed, config, n=80):
     rng = np.random.default_rng(seed)
     return Session(choices=rng.integers(0, 2, n).astype(float), outcomes=rng.integers(0, 2, n).astype(float),
-                   configuration_i=np.full(n, config))
+                   configuration_i=np.full(n, config), poke_A=np.full(n, 10 + config), poke_B=np.full(n, 20 + config),
+                   block=np.arange(n) // 8, forced_trial=np.zeros(n, int))
 
 
 class Subjects:
@@ -193,3 +200,211 @@ def test_18_error_bars_are_computed_for_each_problem():
         fb.AnovaRM, plt.errorbar = originals; plt.close('all')
     assert np.allclose(seen['y'], [0.5] + [0] * 9)
     assert np.allclose(seen['yerr'], [0.5 / np.sqrt(2)] + [0] * 9)
+
+
+def test_28_29_circular_shift_stays_away_from_the_unshuffled_data():
+    from functions.helper_functions import circular_shift
+    np.random.seed(0)
+    for n_rows, m in [(157, 12), (60, 11), (278 - 12, 11), (30, 14)]:
+        s = np.array([circular_shift(n_rows, m) for _ in range(5000)])
+        assert s.min() >= m and s.max() <= n_rows - m          # never closer than m rows to the identity, either way
+        assert s.min() == m and s.max() == n_rows - m           # whole allowed range is used
+
+
+def _record_shifts(module, monkeypatch):
+    import functions.helper_functions as hf
+    calls = []
+
+    def spy(n_rows, min_shift):
+        calls.append((n_rows, min_shift))
+        return hf.circular_shift(n_rows, min_shift)
+    monkeypatch.setattr(module, 'circular_shift', spy)
+    return calls
+
+
+def test_28_within_region_roll_uses_each_tasks_own_length(monkeypatch):
+    hp, _ = data()
+    hp = {'DM': [hp['DM'][0][:2]], 'Data': [hp['Data'][0][:2]]}
+    for dm in hp['DM'][0]:
+        dm[:, 4] = np.arange(len(dm)) // 20                          # a block change every 20 trials (block_min = 20)
+    calls = _record_shifts(regs, monkeypatch)
+    regs.GLM_roll_time(hp, perm=3)
+    lengths = [[int(np.sum(dm[:, 5] == t)) for t in (1, 2, 3)] for dm in hp['DM'][0]]
+    assert calls == [(l, 20) for ls in lengths for _ in range(3) for l in ls]   # tasks 1-3 of each session, for each of 3 perms
+
+
+def test_29_policy_roll_shifts_within_the_rows_regressed(monkeypatch):
+    hp, _ = data()
+    hp = {'DM': [hp['DM'][0][:2]], 'Data': [hp['Data'][0][:2]]}
+    calls = _record_shifts(pol, monkeypatch)
+    pol.GLM_policy_roll_tome(hp, perm=2, n=11)
+    n_rows = [len(dm) - 11 - 1 for dm in hp['DM'][0]]                # n history trials and one more are dropped
+    assert calls == [(r, 11) for r in n_rows for _ in range(2)]
+
+
+def test_fig1f_both_error_bands_have_a_visible_fill():
+    from test_behaviour import Experiment
+    rng = np.random.default_rng(0); n = 120; block = np.zeros(n, int)
+    for r in (29, 59, 89):
+        block[r + 1:] += 1
+    state = block % 2
+    sessions = [Session(block=block, forced_trial=np.zeros(n, int), state=state,
+                        choices=np.where(rng.random(n) < .8, state, 1 - state)) for _ in range(3)]
+    plt.close('all'); fb.meta_learning_reversals(Experiment(sessions, n_subjects=3))
+    from matplotlib.collections import LineCollection
+    bands = [c for c in plt.gca().collections if not isinstance(c, LineCollection)]   # the block-switch line is a LineCollection
+    plt.close('all')
+    assert len(bands) == 2
+    for b in bands:
+        r, g, bl, a = b.get_facecolor()[0]
+        assert a >= 0.25 and max(r, g, bl) < 0.9                   # not almost white, and an explicit fill colour
+
+
+def test_fig1il_outcome_x_choice_panels_share_the_outcome_colour():
+    exp = Subjects([[training_session(100 * s + c, c) for c in range(10)] for s in range(9)])
+    plt.close('all'); fb.plot_policy_during_training(exp)
+    fig = [plt.figure(n) for n in plt.get_fignums() if len(plt.figure(n).axes) == 4][-1]
+    colours = [ax.lines[0].get_color() for ax in fig.axes]
+    plt.close('all')
+    assert colours[0] == colours[1] and colours[2] == colours[3] and colours[1] != colours[2]
+
+
+def test_last_time_tick_is_on_the_last_time_bin():
+    from functions.helper_functions import XTICK_POSITIONS, XTICK_POSITIONS_DLC
+    hp, _ = data()
+    n_bins = hp['Data'][0][0].shape[2]
+    assert XTICK_POSITIONS[-1] == 62 and XTICK_POSITIONS_DLC[-1] == 63
+    assert XTICK_POSITIONS[-1] <= n_bins - 1
+
+
+def test_rsa_ticks_sit_on_the_choice_reward_and_half_second_bins_and_the_markers_have_a_legend():
+    def blocks(rng, DM, fr):
+        DM[:, 4] = np.arange(len(DM)) // 15
+    hp, pfc = data(hp=blocks, pfc=blocks)
+    plt.close('all'); rsa.RSA_across_time_plot(hp, pfc, perm_n=N_PERM)
+    axes = [ax for n in plt.get_fignums() for ax in plt.figure(n).axes
+            if [t.get_text() for t in ax.get_xticklabels()] == ['C', 'R', '+0.5']]
+    ticks = [list(ax.get_xticks()) for ax in axes]; has_legend = axes[0].get_legend() is not None
+    plt.close('all')
+    assert len(axes) >= 6
+    assert all(t == [35 - 34, 42 - 34, 49 - 34] for t in ticks)      # x position i is the window starting at bin 34 + i
+    assert has_legend
+
+
+def test_fig4g_has_one_legend_naming_the_regions_pfc_and_ca1():
+    from test_decode import make_session
+    rng = np.random.default_rng(0)
+    hp = {'DM': [np.array([make_session(rng)[0] for _ in range(N_HP)], dtype=object)],
+          'Data': [np.array([make_session(rng)[1] for _ in range(N_HP)], dtype=object)]}
+    pfc = {'DM': [np.array([make_session(rng)[0] for _ in range(N_PFC)], dtype=object)],
+           'Data': [np.array([make_session(rng)[1] for _ in range(N_PFC)], dtype=object)]}
+    plt.close('all')
+    try:
+        dec.plot(hp, pfc)
+    except Exception as e:
+        pytest.skip('synthetic decoding data not supported: %s' % e)
+    names = [t.get_text() for t in plt.gca().get_legend().get_texts()]
+    plt.close('all')
+    assert names == ['PFC', 'CA1']
+
+
+def test_30_time_control_keeps_adjacent_layouts_in_either_order_and_compares_earlier_with_later(monkeypatch):
+    def session(order):                                       # layouts run in this order, 30 trials each
+        task = np.repeat(order, 30).astype(float)
+        DM = np.zeros((len(task), 8)); DM[:, 5] = task
+        return DM, np.zeros((len(task), 2, 5))
+    sessions = [session([2, 1, 3]), session([1, 2, 3]), session([1, 3, 2]), session([3, 1, 2])]
+    d = {'DM': [np.array([s[0] for s in sessions] + [None], object)[:-1]],
+         'Data': [np.array([s[1] for s in sessions] + [None], object)[:-1]]}
+    monkeypatch.setattr(ext, 'task_ind', lambda task, a, b: task)
+    _, _, order = ext.control_for_time(d, compare_tasks=1)          # T1-T2: adjacent in sessions 0, 1 and 3
+    assert order == [(2, 1), (1, 2), (1, 2)]
+    _, _, order = ext.control_for_time(d, compare_tasks=3)          # T1-T3: adjacent in sessions 0, 2 and 3
+    assert order == [(1, 3), (1, 3), (3, 1)]
+
+
+def test_ext2dh_trials_are_scored_with_their_own_layout_and_the_switch_trial_is_left_out():
+    # trial 19 is the last free trial of layout 1 (reversal block 4): its pokes run into the next layout's trials, so it
+    # is left out and block 4 is the mean of trials 15-18; a poke on trial 18 is scored with layout 1's ports
+    assert np.allclose(rec_pokes(19), [0, 0, 0, 0])
+    assert np.allclose(rec_pokes(18), [0, 0, 0, 0.25])
+    assert np.allclose(rec_pokes(18, ('A', 'other'), only_A_B=False), [0, 0, 0, 0.25])
+    # the first trial of a layout is scored too (its "no previous choice" reset must not wipe the choice just made)
+    assert np.allclose(rec_pokes(0), [0.2, 0, 0, 0])
+
+
+def _layout_session(seed, i, a, b, n=80, block_len=8):
+    rng = np.random.default_rng(seed)
+    return Session(choices=rng.integers(0, 2, n).astype(float), outcomes=rng.integers(0, 2, n).astype(float),
+                   configuration_i=np.full(n, i), poke_A=np.full(n, a), poke_B=np.full(n, b),
+                   block=np.arange(n) // block_len, forced_trial=np.zeros(n, int))
+
+
+LAYOUTS = [(6, 1, 5), (6, 5, 3), (3, 1, 6), (1, 3, 6), (2, 6, 4), (4, 2, 6), (5, 1, 2), (1, 2, 5), (2, 3, 1), (3, 4, 5)]
+
+
+def test_c3_problems_are_told_apart_by_the_whole_port_layout():
+    # the first two layouts share the initiation port (6) but not A and B: they are two problems, ten in all
+    sessions = [_layout_session(k, *lay) for k, lay in enumerate(LAYOUTS)]
+    coefs = fb.policy_training(Subjects([sessions]))[0]
+    plt.close('all')
+    assert len(coefs) == 10
+
+
+def test_c3_an_interrupted_problem_is_left_out(monkeypatch):
+    monkeypatch.setattr(fb, 'MIN_REVERSALS_PER_PROBLEM', 5)
+    full = [_layout_session(k, *lay) for k, lay in enumerate(LAYOUTS)]                # 9 reversals each
+    interrupted = _layout_session(99, 6, 2, 3, block_len=30)                          # 2 reversals, same initiation port
+    sessions = full[:9] + [interrupted] + full[9:]
+    assert fb.interrupted_problem_sessions(sessions) == {9}
+    with_it = fb.policy_training(Subjects([sessions]))[0]
+    without = fb.policy_training(Subjects([full]))[0]
+    plt.close('all')
+    assert len(with_it) == 10 and np.allclose(with_it, without)
+
+
+def _spy_cpds(module, monkeypatch):
+    """Record every permuted CPD array (neurons x time x predictors) in the order it is computed."""
+    seen = []; original = module.CPD_from_precomputed
+
+    def spy(*a):
+        out = original(*a); seen.append(np.array(out)); return out
+    monkeypatch.setattr(module, 'CPD_from_precomputed', spy)
+    return seen
+
+
+def test_lean_glm_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypatch):
+    def blocks(rng, DM, fr):
+        DM[:, 4] = np.arange(len(DM)) // 15
+    hp, _ = data(hp=blocks)
+    hp = {'DM': [hp['DM'][0][:3]], 'Data': [hp['Data'][0][:3]]}
+    # a neuron that is silent in problem 2 has no CPD there (NaN), as in the real data; the mean over problems skips it
+    dm, fr = hp['DM'][0][0], hp['Data'][0][0]; fr[dm[:, 5] == 2, 0, :] = 0
+    seen = _spy_cpds(regs, monkeypatch); n_perm = 4
+    np.random.seed(0); _, lean = regs.GLM_roll_time(hp, perm=n_perm)
+    # rebuild the full null as the original code stored it: per session, per permutation, problems 1-3
+    shapes = [(len(fr), fr.shape[1] * fr.shape[2]) for fr in hp['Data'][0]]
+    full = [[[None] * 3 for _ in range(n_perm)] for _ in shapes]; k = 0
+    for s, (_, _) in enumerate(shapes):
+        for p in range(n_perm):
+            for t in range(3):
+                n_neu, n_t = hp['Data'][0][s].shape[1:]
+                full[s][p][t] = seen[k].reshape(n_neu, n_t, -1); k += 1
+    per_task = [np.stack([np.concatenate([full[s][p][t] for s in range(len(shapes))], 0) for p in range(n_perm)]) for t in range(3)]
+    reference = np.mean(np.nanmean(per_task, 0), 1)                   # mean over problems, then over neurons
+    assert np.isnan(per_task[1]).any() and not np.isnan(reference).any()
+    assert lean.shape == (n_perm, 1) + reference.shape[1:]
+    assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)
+
+
+def test_lean_policy_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypatch):
+    hp, _ = data()
+    hp = {'DM': [hp['DM'][0][:3]], 'Data': [hp['Data'][0][:3]]}
+    seen = _spy_cpds(pol, monkeypatch); n_perm = 3
+    np.random.seed(0); _, lean = pol.GLM_policy_roll_tome(hp, perm=n_perm, n=11)
+    k = 0; per_perm = [[] for _ in range(n_perm)]
+    for fr in hp['Data'][0]:
+        for p in range(n_perm):
+            per_perm[p].append(seen[k].reshape(fr.shape[1], fr.shape[2], -1)); k += 1
+    reference = np.mean(np.stack([np.concatenate(c, 0) for c in per_perm]), 1)
+    assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)

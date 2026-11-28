@@ -1,10 +1,17 @@
 """Synthetic tests for the Fig 1e and Fig 1f reversal analyses."""
 import os, sys
 import numpy as np
+import pytest
 import matplotlib
 matplotlib.use('Agg')
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from functions import functions_behaviour as fb
+
+
+@pytest.fixture(autouse=True)
+def no_minimum_reversals(monkeypatch):
+    # these tests use short synthetic problems; the rule that drops interrupted problems is tested on its own
+    monkeypatch.setattr(fb, 'MIN_REVERSALS_PER_PROBLEM', 0)
 
 
 class Session:
@@ -21,7 +28,7 @@ class Experiment:
         return self.sessions
 
 
-def session_1e(n, crossings=(), reversals=(), n_forced=0, config=1):
+def session_1e(n, crossings=(), reversals=(), n_forced=0, config=1, first_state=0):
     """Crossing c: countdown starts on trial c + 1. Reversal r: block changes on trial r + 1."""
     block = np.zeros(n, int); prt = np.zeros(n, int)
     for r in reversals:
@@ -31,8 +38,9 @@ def session_1e(n, crossings=(), reversals=(), n_forced=0, config=1):
     forced = np.r_[np.ones(n_forced, int), np.zeros(n, int)]
     pad = np.zeros(n_forced, int)
     return Session(**{'block': np.r_[pad, block], 'pre-reversal trials': np.r_[pad, prt],
-                      'forced_trial': forced, 'n_trials': n + n_forced,
-                      'configuration_i': np.full(n + n_forced, config)})
+                      'forced_trial': forced, 'n_trials': n + n_forced, 'state': (first_state + np.r_[pad, block]) % 2,
+                      'configuration_i': np.full(n + n_forced, config),
+                      'poke_A': np.full(n + n_forced, 10 + config), 'poke_B': np.full(n + n_forced, 20 + config)})
 
 
 class Captured(Exception):
@@ -57,9 +65,17 @@ def trials_to_threshold(sessions):
 
 
 def test_counts_restart_after_crossing_without_reversal():
-    # crossings at 10, 40 and 80; the session ends before the last reversal, so the next count starts at 0
-    x = trials_to_threshold([session_1e(100, (10, 40, 80), (20, 50)), session_1e(60, (30,), (40,))])
+    # crossings at 10, 40 and 80; the session ends before the last reversal (in state 0). If the next session starts in
+    # the other state (a reversal between sessions), its crossing is a new block and the count starts at 0
+    x = trials_to_threshold([session_1e(100, (10, 40, 80), (20, 50)), session_1e(60, (30,), (40,), first_state=1)])
     assert list(x[:4]) == [11, 20, 30, 31]
+
+
+def test_block_that_crossed_before_the_session_ended_takes_one_slot():
+    # same as above, but the next session goes on with the same block (same state): its crossing at 30 is that block
+    # crossing again, so it takes no second slot; the next block (after the reversal at 40) crosses at 50
+    x = trials_to_threshold([session_1e(100, (10, 40, 80), (20, 50)), session_1e(60, (30, 50), (40,))])
+    assert list(x[:4]) == [11, 20, 30, 10]
 
 
 def test_forced_trials_excluded_once():

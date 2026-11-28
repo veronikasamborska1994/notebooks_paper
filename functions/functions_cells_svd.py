@@ -73,8 +73,10 @@ def extract_data(data, perm = False, inds =  np.arange(13,51)):
        
 def _cumulative_weights(data, modes_from, diagonal, axis):
     '''Cumulative weights of `data` projected onto the singular modes of `modes_from`.
-    diagonal = True: squared projections summed over `axis` (variance captured by each temporal (axis 0) or cellular
-    (axis 1) mode, independent of how the modes of the two matrices pair up).
+    diagonal = True: squared projections u^T X v summed over `axis`: the variance captured by each temporal (axis 0) or
+    cellular (axis 1) mode within the subspace spanned by the other set of modes. The left and right modes come from the
+    same SVD, so for axis = 0 the data are first projected onto the cellular modes (at most 4 x n_bins of them, fewer than
+    the neurons), and the temporal curve also depends on that subspace (as in the published code).
     diagonal = False: absolute value of the diagonal u_i^T X v_i (the paired cellular-temporal weights).
     Normalised by the number of neurons.'''
     u, _, vh = np.linalg.svd(modes_from, full_matrices = False)
@@ -359,13 +361,13 @@ def plot_supplementary(HP_data,PFC_data, inds, animal_perm = False, n_perms = 5)
     plt.ylabel('Variance Explained')
     plt.title('Cellular Modes')
 
-    #Plot cellular and temporal modes with a temporal shuffle
+    #Plot cellular and temporal modes (no shuffle drawn)
     plt.figure(figsize = (6,5))
     cell_time_shuffle_vs_real(PFC_data, d = False, shuffle_cells = True, HP_ = 'False',inds = inds, shuffle_plot = False)
     cell_time_shuffle_vs_real(HP_data, d = False, shuffle_cells = True, HP_ = 'True', inds = inds, shuffle_plot = False)
     plt.xlabel('Number of cellular-temporal activity patterns (right and left singular vectors)')
     plt.ylabel('Cumulative Weight')
-    plt.title('Cellular and Temporal Modes with Temporal Shuffle')    
+    plt.title('Cellular and Temporal Modes')    
 
     plt.figure(figsize = (8,2))
     plt.subplot(1,3,1)
@@ -398,16 +400,16 @@ def plot_main_figure(HP, PFC, HP_dlc, PFC_dlc, n_perms = 5):
 
     #Plot cellular and temporal modes with a temporal shuffle
     plt.figure(figsize = (6,5))
-    cell_time_shuffle_vs_real(PFC_dlc, d = False, shuffle_cells = True, HP_ = 'False')
-    cell_time_shuffle_vs_real(HP_dlc, d = False, shuffle_cells = True, HP_ = 'True')
+    cell_time_shuffle_vs_real(PFC_dlc, d = False, shuffle_cells = False, HP_ = 'False')
+    cell_time_shuffle_vs_real(HP_dlc, d = False, shuffle_cells = False, HP_ = 'True') # shuffle_cells = False shuffles time points
     plt.xlabel('Number of cellular-temporal activity patterns (right and left singular vectors)')
     plt.ylabel('Cumulative Weight')
     plt.title('Cellular and Temporal Modes with Temporal Shuffle')    
 
     #Plot cellular and temporal modes with a cellular shuffle
     plt.figure(figsize = (6,5))
-    cell_time_shuffle_vs_real(PFC_dlc, d = False, shuffle_cells = False, HP_ = 'False')
-    cell_time_shuffle_vs_real(HP_dlc, d = False,  shuffle_cells = False, HP_ = 'True')
+    cell_time_shuffle_vs_real(PFC_dlc, d = False, shuffle_cells = True, HP_ = 'False')
+    cell_time_shuffle_vs_real(HP_dlc, d = False, shuffle_cells = True, HP_ = 'True') # shuffle_cells = True shuffles cells
     plt.xlabel('Number of cellular-temporal activity patterns (right and left singular vectors)')
     plt.ylabel('Cumulative Weight')
     plt.title('Cellular and Temporal Modes with Cell Shuffle')    

@@ -1,4 +1,5 @@
-"""Representational Dissimilarity Matrices (RDMs) for RSA analysis.
+"""Model matrices for the RSA analysis (named RDMs in the code, as in the paper). They are similarity matrices:
+True means the two conditions are in the same group. The CPDs do not depend on the naming.
 
 Each function returns a boolean matrix of shape (15, 15) encoding which
 trial-type pairs should be grouped together under a given hypothesis.
