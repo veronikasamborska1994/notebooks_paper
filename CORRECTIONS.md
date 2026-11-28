@@ -83,6 +83,18 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
   (printed 11.12 and 0.10, P = 0.474). Extended Data Fig 2f: t(5) = 1.49, P = 0.197 (printed 1.39, P = 0.220).
   A/B pokes only: reversal F(3,18) = 4.92, P = 0.011.
 
+- Fig 6b and the Extended Data Fig 7 policy GLM (bug 29): the null no longer contains near-unshuffled data, so more bins pass.
+  Policy at P < 0.01: PFC bins 16-39 (before bug 29, 21-38), CA1 bins 36-40 (37-40); DLC residuals (Ext 7): PFC 28-38,
+  CA1 39-43. Choice, previous choice and policy x choice now also pass in some bins before initiation. The conclusions
+  (policy and policy x choice coded in both regions) hold.
+- Fig 4b and Extended Data Fig 5a, within-region markers (bug 28): within each region the markers start a few bins earlier (Fig 4b at P < 0.01: choice
+  PFC from bin 15, CA1 from bin 26; outcome PFC from bin 27, CA1 from bin 32; outcome x choice PFC from bin 37, CA1 from bin 41;
+  a few isolated bins before initiation also pass), as the null is no longer inflated by unshuffled data. The between-region markers
+  do not change (Fig 4b at P < 0.01: choice bins 35-45 and 47-50, outcome 40-62, outcome x choice 49-58; Ext 5a, animals as the unit: choice bins 36-41, outcome x choice 54-55, outcome none).
+- Extended Data Fig 8 (bug 30): with sessions in which the two layouts are adjacent in either order (CA1 23, 28 and 21
+  sessions for T1-T2, T2-T3 and T1-T3; PFC 30, 34 and 26), CA1 surprise after a layout switch is clearer than before,
+  mostly at initiation, and PFC surprise is weaker. The conclusion (CA1 more surprised by a new layout than PFC) holds.
+
 All other conclusions are unchanged; several statistics change in value.
 
 Forced-choice trials (a quarter of all trials) are included in all neural analyses, as in the original code. In a quick check,
