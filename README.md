@@ -78,6 +78,8 @@ Open the notebooks in Jupyter or VS Code and update the data path in the first c
 │   ├── test_neural_synthetic.py # RSA, SVD and policy known-answer tests
 │   └── test_fixes.py            # One test per remaining fix in CORRECTIONS.md
 ├── figures/                     # Output of run_all_analyses.py (PNG; 5,000 permutations, seed 0)
+├── figures_svg/                 # The same figures as SVG
+├── figures_restyled/            # The SVGs redrawn in the style of the published figures, with the code
 └── requirements.txt
 ```
 
