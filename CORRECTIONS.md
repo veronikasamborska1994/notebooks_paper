@@ -40,24 +40,26 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
 | 31 | In the recordings out-of-sequence count the last free trial before a layout switch was always scored zero (the trial was checked against the next layout's ports, with an off-by-one trial index, and a reset ran on every poke). It is now excluded, because the pokes after it belong to the next layout's free-reward and forced trials. The first free trial of each layout is scored normally | Ext 2d-h |
 | 32 | A block that crossed the performance threshold just before its session ended took two reversal slots when the next session went on with the same block (13 of 17 such cases), shifting every later reversal of that problem by one | Fig 1e; Ext 1a |
 | 33 | Problems were told apart by the initiation port only, which merged two layouts that share it (615 and 653 in mice 478, 480 and 481). Problems are now told apart by the whole port layout; the three short 653 runs (one session, 2-4 reversals; every other problem has at least 9) are left out as interrupted problems | Fig 1e-l |
-| 34 | The A-rewarded error band of the example neurons used the s.e.m. of layout 1 in every layout | Fig 2 |
+| 34 | The A-rewarded error band of the example neurons used the s.e.m. of layout 1 in every layout. The printed example cells are not regenerated here (the code draws one demonstration neuron); they would change only in that band | Fig 2 |
 | 35 | The two SVD panels with a shuffle had their titles swapped (the "temporal shuffle" panel shuffled cells and vice versa) | Fig 5g; Ext 9 |
 | 36 | Plotting only: the first-10-blocks band of Fig 1f was almost white (grey at alpha 0.1) and the other band had no fill colour in the SVG; RSA ticks for +0.5 s and +1 s were one to four bins off and the P < .01 legend was not drawn; the last time tick (+1 s) was one bin past the data; "Previous outcome x choice" in Fig 1i-l had the choice colour; the Fig 4g legend named CA1 "HP" and covered a data point | Fig 1f, 1i-l, 4b, 4e, 4g, 6b, 6e; Ext 5, 7 |
 | 37 | The finite-value mask of the policy correlations ran over time bins instead of neurons (no effect: the data have no non-finite values) | Fig 6c-e; Ext 5c, d; Ext 7f, g |
+| 38 | The decoder used only the last six trials of each state (`MIN_TRIALS // 2 + 1`), although every session it uses has at least 11 of each; this is not in the Methods. It now uses 11 trials per state drawn at random from the whole layout, with the confusion matrices averaged over 100 draws (seed 0) | Fig 4f, g |
 
 ## Results that change
 
 - Fig 4g, Port: with the cells that share a physical port (Initiation of layout 2 and B choice of layout 3, both
-  directions), CA1 44.4% and PFC 51.0% (P = 23/35 = 0.657); the decoder does not show a stronger port code in CA1.
-  The original code gave CA1 68.1% (two states at different ports) and PFC 27.1% (one same-port and one
-  different-port cell, because of bug 5). `dec.plot(HP, PFC, same_port=False)` uses the original cells with bug 5 fixed (PFC 13.5%).
-  The result depends on the definition: also counting B reward at that port, averaged over cells, gives CA1 38.9%
-  and PFC 25.5% (P = 3/35 = 0.086). The decoder uses the last six trials of each type and the two bins around each poke.
+  directions), CA1 68.6% and PFC 59.7% (P = 8/35 = 0.229); the decoder does not show a significantly stronger port
+  code in CA1 at the choice poke. Correct (CA1 34.5%, PFC 58.0%, P = 2/35) and Position (2.1%, 25.3%, P = 1/35) hold.
+  The original code gave CA1 68.1% (I3 and B2, two neighbouring but different ports) and PFC 27.1% (one same-port and one
+  different-port cell, because of bug 5). `dec.plot(HP, PFC, same_port=False)` uses the original cells with bug 5 fixed.
+  With the last six trials per state (bug 38) the same-port values were CA1 44.4% and PFC 51.0% (P = 23/35).
+  The decoder uses the two bins up to each poke.
 - Fig 4f is redrawn (`figures/fig4fg_decode_1.png`) so that every bar of Fig 4g can be read off it. The printed panel showed
   the average over all layout pairs with green boxes, but the Port bar was computed from the layout 2/3 pair only. Now the
   averaged matrix carries the Correct (blue) and Position (red) cells, and the two layout 2/3 matrices carry the Port cells (green),
   with every state labelled with its layout.
-- Fig 4f, PFC matrix: changes slightly because of bug 5 (B choice decoded as Initiation 9% to 16%, as B choice 54% to 47%).
+- Fig 4f: all matrices change slightly because of bugs 5 and 38.
 - Fig 6e: PFC > CA1 holds for B choices at choice and outcome time. For A choices only a few
   bins remain, none at outcome time. The A versus B comparison (grey markers) is removed from Fig 6e and
   Extended Data Fig 5d and 7g: at most one bin reached P < 0.05, whichever way the difference was taken, so the
@@ -98,28 +100,33 @@ regenerated on the full data set (5,000 session permutations, random seed 0; all
 All other conclusions are unchanged; several statistics change in value.
 
 Forced-choice trials (a quarter of all trials) are included in all neural analyses, as in the original code. In a quick check,
-excluding them changes several results (Fig 4g Correct P = 2/35 to 10/35; Extended Data Fig 5c B 1/35 to 3/35).
+excluding them changes several results (Fig 4g Correct P = 2/35 to 10/35, checked with six trials per state; Extended Data Fig 5c B 1/35 to 3/35).
 
 ## For discussion: the Fig 4g Port bar
 
 In layouts 2 and 3 the initiation port of layout 2 (I2) is the B port of layout 3 (B3). The Port bar should count I2 and B3 being
-confused. The original code counted I3 and B2 instead, which are different ports (for PFC one of the two cells, because of bug 5).
+confused. The original code counted I3 and B2 instead (for PFC one of the two cells, because of bug 5). I3 and B2 are different
+ports, but they are diagonal neighbours in all 81 sessions, so that measure is a neighbouring-port confusion, not a control.
 
 | Port bar (%) | CA1 | PFC | CA1 > PFC |
 |---|---|---|---|
 | Printed | 68.1 | 27.1 | P < 0.05 |
-| Same port (I2 and B3), final | 44.4 | 51.0 | 23/35 |
+| Same port (I2 and B3), final | 68.6 | 59.7 | 8/35 |
+| Neighbouring ports (I3 and B2), final | 68.7 | 38.1 | 2/35 |
 
-So Fig 4g does not support "CA1 predominantly decoded to the same physical port". Fig 4e and Extended Data Fig 4 do not use these cells.
+So at the choice poke Fig 4g does not show a significantly stronger code for the same physical port in CA1.
 
-A new post hoc analysis (`figures/posthoc_port_over_time.png`, linear decoder, all 81 sessions) follows the port over time.
-CA1 / PFC in %, chance 33; P of CA1 > PFC over the 35 animal splits (smallest possible 0.029):
+Post hoc, with the same decoder and the A/B choice window moved later (exploratory; the windows were chosen after seeing the
+result; CA1 / PFC in %, P of CA1 > PFC over the 35 animal splits, smallest possible 1/35):
 
-| A/B window | Same port | Same role | Different ports (control) |
-|---|---|---|---|
-| Choice poke | 72.9 / 63.0 (P = 0.200) | 18.1 / 20.8 | 64.2 / 47.6 |
-| Rewarded, choice to outcome | 78.2 / 44.1 (P = 0.029) | 17.9 / 34.0 | 66.8 / 24.6 (P = 0.029) |
+| A/B window (bins) | Same port | Neighbouring ports |
+|---|---|---|
+| 34-35 (Fig 4g) | 68.6 / 59.7 (8/35) | 68.7 / 38.1 (2/35) |
+| 35-36 | 73.4 / 60.1 (8/35) | 64.2 / 38.6 (3/35) |
+| 38-39 | 51.6 / 26.4 (2/35) | 38.3 / 9.4 (2/35) |
+| 35-41, rewarded trials | 66.7 / 39.5 (1/35) | 48.0 / 17.7 (2/35) |
 
-At the poke both regions represent the port; afterwards CA1 keeps it and PFC moves toward the role. This does not isolate the shared
-port: CA1 is also above PFC for two different ports, and the difference between the two is not larger in CA1 (P = 0.286). The window
-and decoder were chosen after seeing the Fig 4g result, and the Fig 4g decoder itself shows the same direction without significance.
+After the choice poke CA1 confuses initiation and B choice more than PFC, for the same port and for the neighbouring port alike;
+the difference between the two is never larger in CA1 (P = 21/35 to 30/35 in these windows). This fits a location signal in CA1 at the scale of
+neighbouring ports, not a code for the exact port. The layouts contain no distant port with a comparable role to test against.
+`figures/posthoc_port_over_time.png` shows a related three-state linear decoder (20 random trials per state, all 81 sessions).

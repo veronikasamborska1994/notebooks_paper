@@ -50,6 +50,8 @@ PORT_CELLS_SAME_PORT = ((4, 0), (0, 4))
 PORT_CELLS_PUBLISHED = ((0, 4), (4, 0))
 
 MIN_TRIALS = 10         # a session is used if every choice x outcome x task has more trials than this
+N_TRIALS = MIN_TRIALS + 1   # trials per state: the number every session that is used is guaranteed to have
+N_DRAWS, SEED = 100, 0      # random draws of N_TRIALS trials per state; confusion matrices are averaged over draws
 BIN_INIT, BIN_CHOICE, BIN_REWARD = 24, 35, 42
 
 
@@ -60,16 +62,22 @@ def _split_by_animal(data, splits):
             [data['Data'][0][i:j] for i, j in zip(bounds[:-1], bounds[1:])])
 
 
-def _session_patterns(firing, DM, task_test):
-    """Return (task x, task y) matrices (samples x neurons, ordered as STATES) or None if too few trials."""
+def _session_patterns(firing, DM, task_test, rng=None):
+    """Return (task x, task y) matrices (samples x neurons, ordered as STATES) or None if too few trials.
+
+    Each state contributes N_TRIALS trials drawn at random without replacement from all its trials in the
+    layout (``rng``), so the result does not depend on which part of the layout the trials come from.
+    The published code took the last MIN_TRIALS // 2 + 1 = 6 trials of each state.
+    """
+    rng = np.random.default_rng(SEED) if rng is None else rng
     taskid = task_ind(DM[:, 5], DM[:, 6], DM[:, 7])
-    index = MIN_TRIALS // 2 + 1                            # last `index` trials of each type
     bins_init = [BIN_INIT - 1, BIN_INIT]
     bins_choice = [BIN_CHOICE - 1, BIN_CHOICE]
     bins_reward = [BIN_REWARD, BIN_REWARD + 1]
 
     def stack(trials, bins):
-        fr = firing[trials][:, :, bins][-index:]
+        trials = np.sort(rng.choice(np.asarray(trials), N_TRIALS, replace=False))
+        fr = firing[trials][:, :, bins]
         return np.concatenate(np.transpose(fr, [0, 2, 1]), 0)
 
     patterns = []
@@ -96,12 +104,13 @@ def _fit_and_score(train, test, labels):
     return cnf / cnf.sum(1, keepdims=True) * 100
 
 
-def decoder_trial_states(data, task_test=0, H=0, perm=True, decoder_full=True):
-    """Decode position in the trial across two tasks (Fig 4F, G).
+def decoder_trial_states(data, task_test=0, H=0, perm=True, decoder_full=True, rng=None):
+    """Decode position in the trial across two tasks (Fig 4F, G), for one random draw of trials.
 
     Returns two lists (one 7 x 7 matrix per animal): train on task x / test on y, and the reverse.
     ``decoder_full`` is kept for backward compatibility and is unused.
     """
+    rng = np.random.default_rng(SEED) if rng is None else rng
     if perm:
         dms, firing = data
     else:
@@ -109,7 +118,7 @@ def decoder_trial_states(data, task_test=0, H=0, perm=True, decoder_full=True):
 
     xy, yx = [], []
     for animal_dm, animal_fr in zip(dms, firing):
-        sessions = [_session_patterns(f, d, task_test) for f, d in zip(animal_fr, animal_dm)]
+        sessions = [_session_patterns(f, d, task_test, rng) for f, d in zip(animal_fr, animal_dm)]
         sessions = [p for p in sessions if p is not None]
         task_x = np.concatenate([p[0] for p in sessions], 1)
         task_y = np.concatenate([p[1] for p in sessions], 1)
@@ -119,11 +128,12 @@ def decoder_trial_states(data, task_test=0, H=0, perm=True, decoder_full=True):
     return xy, yx
 
 
-def permute_subjects(HP, PFC):
+def permute_subjects(HP, PFC, draws=N_DRAWS, seed=SEED):
     """Enumerate all 35 assignments of 7 animals to PFC (4) and CA1 (3) (Fig 4F-G).
 
     Decoding is done within animal and does not depend on the grouping, so each animal is
-    decoded once and only the group averages are permuted.
+    decoded once and only the group averages are permuted. Each animal's confusion matrices are
+    averaged over ``draws`` random draws of N_TRIALS trials per state.
 
     Returns
     -------
@@ -132,7 +142,9 @@ def permute_subjects(HP, PFC):
     subj_hp_xy, subj_hp_yx, subj_pfc_xy, subj_pfc_yx : ndarray (3 pairs, animals, 7, 7)
     """
     data = animal_exp_permute(HP, PFC)                      # animals 0-2 CA1, 3-6 PFC
-    both = np.array([decoder_trial_states(data, task_test=c, perm=True) for c in TASK_PAIRS])
+    rng = np.random.default_rng(seed)
+    both = np.mean([[decoder_trial_states(data, task_test=c, perm=True, rng=rng) for c in TASK_PAIRS]
+                    for _ in range(draws)], 0)
     xy, yx = both[:, 0], both[:, 1]                         # (pair, animal, 7, 7)
     perm_xy, perm_yx = [], []
     for m, out in ((xy, perm_xy), (yx, perm_yx)):
@@ -217,7 +229,7 @@ def plot_matrices(hp1, hp2, pfc1, pfc2):
     return fig
 
 
-def plot(HP, PFC, same_port=True):
+def plot(HP, PFC, same_port=True, draws=N_DRAWS):
     """Plot cross-task decoding results (Fig 4F-G).
 
     Runs all permutations and plots:
@@ -234,7 +246,7 @@ def plot(HP, PFC, same_port=True):
         False: the cells used for the printed figure.
     """
 
-    perm_all, perm_all_2, matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2 =  permute_subjects(HP, PFC) 
+    perm_all, perm_all_2, matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2 = permute_subjects(HP, PFC, draws=draws)
     stats = decoding_statistics(matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2, same_port)
     plot_matrices(matrix_hp_1, matrix_hp_2, matrix_pfc_1, matrix_pfc_2)
 

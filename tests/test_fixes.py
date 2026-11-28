@@ -65,9 +65,9 @@ def test_2_large_markers_are_labelled_p_01(permutation_figures):
 def test_5_decoding_returns_both_directions_for_pfc():
     rng = np.random.default_rng(0)
     hp, pfc = region(rng, N_HP, ntr=180), region(rng, N_PFC, ntr=180)
-    out = dec.permute_subjects(hp, pfc)
-    xy, yx = dec.decoder_trial_states(pfc, task_test=3, H=1, perm=False)
-    assert np.allclose(out[4][2], xy) and np.allclose(out[5][2], yx) and not np.allclose(xy, yx)
+    out = dec.permute_subjects(hp, pfc, draws=1)
+    assert out[4].shape == out[5].shape == (3, 4, 7, 7)        # PFC: train x / test y, and train y / test x
+    assert not np.allclose(out[4][2], out[5][2])
 
 
 def test_6_cross_region_projection_uses_the_modes_of_the_same_problem():
@@ -300,7 +300,7 @@ def test_fig4g_has_one_legend_naming_the_regions_pfc_and_ca1():
            'Data': [np.array([make_session(rng)[1] for _ in range(N_PFC)], dtype=object)]}
     plt.close('all')
     try:
-        dec.plot(hp, pfc)
+        dec.plot(hp, pfc, draws=2)
     except Exception as e:
         pytest.skip('synthetic decoding data not supported: %s' % e)
     names = [t.get_text() for t in plt.gca().get_legend().get_texts()]
@@ -408,3 +408,12 @@ def test_lean_policy_roll_null_equals_the_neuron_mean_of_the_full_null(monkeypat
             per_perm[p].append(seen[k].reshape(fr.shape[1], fr.shape[2], -1)); k += 1
     reference = np.mean(np.stack([np.concatenate(c, 0) for c in per_perm]), 1)
     assert np.allclose(lean[:, 0], reference, rtol=1e-12, atol=1e-15)
+
+
+def test_fig6b_panels_are_ca1_then_pfc_as_in_the_paper():
+    hp, pfc = data()
+    hp = {'DM': [hp['DM'][0][:2]], 'Data': [hp['Data'][0][:2]]}; pfc = {'DM': [pfc['DM'][0][:2]], 'Data': [pfc['Data'][0][:2]]}
+    plt.close('all'); pol.plot_policy_simple_GLM(hp, pfc, n_perm=2)
+    titles = [ax.get_title() for ax in plt.gcf().axes]
+    plt.close('all')
+    assert titles == ['CA1', 'PFC']

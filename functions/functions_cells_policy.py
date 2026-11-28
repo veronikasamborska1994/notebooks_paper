@@ -154,11 +154,12 @@ def plot_policy_simple_GLM(HP,PFC, n_perm = 1000, n = 11, dlc = False):
     cpd_HP_m = np.nanmean(cpd_HP,0); cpd_PFC_m = np.nanmean(cpd_PFC,0)
     _xticks = XTICK_POSITIONS if not dlc else [0, 12.5, 25, 38, 45, 51, 63]
     # lists of cpds and permuted cpds for plotting
-    cpds = [cpd_PFC_m[:,:-1],cpd_HP_m[:,:-1]]; cpds_perms = [cpd_perm_PFC[:,:,:,:-1], cpd_perm_HP[:,:,:,:-1]]
+    # CA1 left, PFC right, as in the published figure
+    cpds = [cpd_HP_m[:,:-1],cpd_PFC_m[:,:-1]]; cpds_perms = [cpd_perm_HP[:,:,:,:-1], cpd_perm_PFC[:,:,:,:-1]]
     # plotting params
     t = np.arange(0,cpd_HP_m.shape[0]); clrs = wes.Moonrise1_5.mpl_colors + wes.Royal2_5.mpl_colors[1:2:]
     plt.figure(figsize = (15,6))
-    titles = ['PFC', 'CA1']; p = ['Choice','Prev Choice','Reward', 'Policy', 'Policy x Choice', 'Reward x Choice']
+    titles = ['CA1', 'PFC']; p = ['Choice','Prev Choice','Reward', 'Policy', 'Policy x Choice', 'Reward x Choice']
     # plot cpds and significance levels
     for c,cpd in enumerate(cpds): 
         # Max-statistic correction: max over time per permutation, then percentile
