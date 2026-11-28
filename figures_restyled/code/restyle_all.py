@@ -337,7 +337,7 @@ def post_posthoc(F,axs,H,fig):
     hs=[Line2D([],[],color=CA1,lw=1,label='CA1'),Line2D([],[],color=PFC,lw=1,label='PFC')]
     axs[-1].legend(handles=hs,loc='upper left',bbox_to_anchor=(1.03,1.0),handlelength=1.4,labelspacing=0.25,borderaxespad=0)
 go('posthoc_port_over_time',scale=0.5,cmap={'#66c2a5':PFC,'#fc8d62':CA1,'#808080':GREY},solid=True,gap=(1.15,1.0),legend='none',post=post_posthoc,
-   titles=['Same port','Same role','Different port (control)','Rewarded, choice to outcome'])
+   titles=['Same port','Same role','Neighbouring port','Rewarded, choice to outcome'])
 go('fig4fg_decode_1',scale=0.5,gap=(1.3,1.02),xrot=r'.',post=post_dec3)
 # ---------- Ext 8 surprise, Fig 2 example neuron (added 28 Nov)
 def post8(F,axs,H,fig):

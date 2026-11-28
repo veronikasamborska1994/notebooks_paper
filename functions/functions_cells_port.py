@@ -5,7 +5,8 @@ three states (initiation, A choice, B choice) is trained on one layout and teste
 placed at different times after the choice. Three answers are scored, averaged over the two directions:
 - same port:      B3 called I2 and I2 called B3 (same physical port, different role)
 - same role:      B3 called B2 and I2 called I3 (same role, different port)
-- different port: I3 called B2 and B2 called I3 (control: same confusion of roles, two different ports)
+- different port: I3 called B2 and B2 called I3 (same confusion of roles, two different ports; I3 and B2 are
+                  neighbouring ports in every session, so this is a neighbouring-port measure, not a control)
 Chance is 33.3 %.
 """
 
@@ -85,7 +86,7 @@ def plot_port_over_time(HP, PFC, draws=N_DRAWS):
         for j, t in enumerate(CHOICE_STARTS):
             print('%s, bins %d-%d: CA1 %.1f PFC %.1f, CA1 > PFC P = %.3f' % (name, t, t + 1, time[k][j, :3].mean(), time[k][j, 3:].mean(), p[j]))
         print('%s: max-statistic over bins, CA1 > PFC P = %.3f' % (name, pmax))
-        ax.axhline(100 / 3, color='grey', ls='--', lw=.8); ax.set_ylim(0, 100); ax.set_title(name + ('' if k < 2 else ' (control)'))
+        ax.axhline(100 / 3, color='grey', ls='--', lw=.8); ax.set_ylim(0, 100); ax.set_title(name if k < 2 else 'neighbouring port')
         ax.set_xticks([35, 42, 49, 60]); ax.set_xticklabels(['Ch', 'R', '+0.5', '']); ax.set_xlabel('Time of the A/B window')
     print('same role: max-statistic over bins, PFC > CA1 P = %.3f' % region_difference_p(-time[1])[1])
     diff = time[0] - time[2]; p, pmax = region_difference_p(diff)
